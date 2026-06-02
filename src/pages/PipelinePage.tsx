@@ -5,28 +5,7 @@ import {
   Clock, Activity, CreditCard, Stethoscope,
   MoreHorizontal, Calendar, MapPin, Edit2, ArrowRight,
 } from 'lucide-react'
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type StageId =
-  | 'nuevo' | 'contactado' | 'cita_agendada' | 'cita_blueprint'
-  | 'paraclínicos' | 'segunda_cita' | 'pendiente_inicio'
-  | 'activo' | 'renovacion' | 'no_renueva'
-
-interface Lead {
-  id: string
-  name: string
-  phone: string
-  email: string
-  age: number
-  city: string
-  stage: StageId
-  date: string
-  plan?: 'S1' | 'S2'
-  tags: string[]
-  source?: string
-  notes?: string
-}
+import { useLeads, type Lead, type StageId } from '../context/LeadsContext'
 
 // ─── Stages config ───────────────────────────────────────────────────────────
 
@@ -41,26 +20,6 @@ const STAGES: { id: StageId; label: string; short: string; color: string; bg: st
   { id: 'activo',           label: '08 · Paciente Activo',       short: 'Activo',       color: '#16A34A', bg: '#F0FDF4' },
   { id: 'renovacion',       label: '09 · Renovación / Referido', short: 'Renovación',   color: '#0D2244', bg: '#F0F4FF' },
   { id: 'no_renueva',       label: '10 · No Renueva',            short: 'No Renueva',   color: '#6B7280', bg: '#F9FAFB' },
-]
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const INITIAL_LEADS: Lead[] = [
-  { id: 'L001', name: 'Andrea Martínez',  phone: '+57 300 1234567', email: 'andrea.m@gmail.com',   age: 38, city: 'Barranquilla', stage: 'nuevo',            date: '2026-05-28', tags: ['Instagram'],       source: 'Instagram' },
-  { id: 'L002', name: 'Carlos Pérez',     phone: '+57 312 9876543', email: 'cperez@hotmail.com',   age: 45, city: 'Bogotá',        stage: 'nuevo',            date: '2026-05-29', tags: ['Referido'],        source: 'Referido' },
-  { id: 'L003', name: 'Sofía Ramírez',    phone: '+57 315 4561230', email: 'sofiar@gmail.com',     age: 52, city: 'Medellín',      stage: 'contactado',       date: '2026-05-20', tags: ['WhatsApp'],        source: 'WhatsApp' },
-  { id: 'L004', name: 'Miguel Torres',    phone: '+57 301 7890123', email: 'mtorres@yahoo.com',    age: 41, city: 'Cali',          stage: 'contactado',       date: '2026-05-18', tags: ['Facebook'],        source: 'Facebook' },
-  { id: 'L005', name: 'Laura Gómez',      phone: '+57 320 3456789', email: 'laurag@gmail.com',     age: 35, city: 'Barranquilla', stage: 'cita_agendada',    date: '2026-05-15', tags: ['Instagram', 'S1'], source: 'Instagram', plan: 'S1' },
-  { id: 'L006', name: 'Pedro Herrera',    phone: '+57 317 6543210', email: 'pherrera@gmail.com',   age: 60, city: 'Santa Marta',  stage: 'cita_agendada',    date: '2026-05-14', tags: ['Referido'],        source: 'Referido' },
-  { id: 'L007', name: 'Valeria Castro',   phone: '+57 311 2345678', email: 'vcastro@outlook.com',  age: 29, city: 'Barranquilla', stage: 'cita_blueprint',   date: '2026-05-10', tags: ['S2'],              source: 'Google',   plan: 'S2' },
-  { id: 'L008', name: 'Andrés Silva',     phone: '+57 318 8765432', email: 'asilva@gmail.com',     age: 48, city: 'Bogotá',        stage: 'cita_blueprint',   date: '2026-05-08', tags: ['S1', 'Urgente'],   source: 'Referido', plan: 'S1' },
-  { id: 'L009', name: 'Camila Ruiz',      phone: '+57 304 5678901', email: 'cruiz@gmail.com',      age: 33, city: 'Barranquilla', stage: 'paraclínicos',     date: '2026-05-05', tags: ['S1'],              source: 'Instagram', plan: 'S1' },
-  { id: 'L010', name: 'Jorge Morales',    phone: '+57 322 1098765', email: 'jmorales@gmail.com',   age: 55, city: 'Cartagena',     stage: 'segunda_cita',     date: '2026-04-28', tags: ['S2'],              source: 'WhatsApp', plan: 'S2' },
-  { id: 'L011', name: 'Diana López',      phone: '+57 316 4321098', email: 'dlopez@gmail.com',     age: 42, city: 'Barranquilla', stage: 'pendiente_inicio', date: '2026-04-20', tags: ['S1', 'Referido'],  source: 'Referido', plan: 'S1' },
-  { id: 'L012', name: 'Luis Fernández',   phone: '+57 308 7654321', email: 'lfernandez@gmail.com', age: 50, city: 'Medellín',      stage: 'activo',           date: '2026-04-10', tags: ['S2'],              source: 'Facebook', plan: 'S2', notes: 'Semana 4 completada, evolución excelente.' },
-  { id: 'L013', name: 'María Jiménez',    phone: '+57 313 2109876', email: 'mjimenez@gmail.com',   age: 39, city: 'Barranquilla', stage: 'activo',           date: '2026-03-15', tags: ['S1'],              source: 'Instagram', plan: 'S1', notes: 'Paciente comprometida, baja de peso 6kg.' },
-  { id: 'L014', name: 'Roberto Vargas',   phone: '+57 319 5432109', email: 'rvargas@outlook.com',  age: 58, city: 'Bogotá',        stage: 'renovacion',       date: '2026-02-01', tags: ['S1→S2', 'VIP'],   source: 'Referido', plan: 'S2', notes: 'Renovó a S2. Refirió 2 pacientes.' },
-  { id: 'L015', name: 'Patricia Soto',    phone: '+57 302 8901234', email: 'psoto@gmail.com',      age: 47, city: 'Barranquilla', stage: 'no_renueva',       date: '2026-01-15', tags: ['No contactable'],  source: 'Instagram' },
 ]
 
 // ─── TagBadge ─────────────────────────────────────────────────────────────────
@@ -541,25 +500,25 @@ function LeadPanel({
         onClick={onClose}
       />
 
-      {/* Floating card — centrado verticalmente en el lado derecho */}
+      {/* Floating card — centrado vertical y horizontalmente en el panel derecho */}
       <div
         className="fixed z-50"
         style={{
-          right: '28px',
           top: '50%',
-          transform: 'translateY(-50%)',
-          width: '420px',
-          maxWidth: 'calc(100vw - 56px)',
-          maxHeight: '88vh',
+          left: '62%',
+          transform: 'translate(-50%, -50%)',
+          width: '540px',
+          maxWidth: 'calc(50vw - 16px)',
+          maxHeight: '90vh',
         }}
       >
         <div
           className="flex flex-col bg-white card-float-in"
           style={{
-            borderRadius: '20px',
-            boxShadow: '0 24px 64px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06)',
+            borderRadius: '22px',
+            boxShadow: '0 28px 72px rgba(0,0,0,0.20), 0 0 0 1px rgba(0,0,0,0.06)',
             overflow: 'hidden',
-            maxHeight: '88vh',
+            maxHeight: '90vh',
           }}
         >
           {/* Panel header */}
@@ -631,11 +590,16 @@ function LeadPanel({
 // ─── Pipeline Page ─────────────────────────────────────────────────────────────
 
 export default function PipelinePage() {
-  const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS)
+  const { leads, moveStage, addLead } = useLeads()
   const [search, setSearch] = useState('')
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [filterStage, setFilterStage] = useState<StageId | 'all'>('all')
   const [draggingId, setDraggingId] = useState<string | null>(null)
+
+  // Sincronizar el lead seleccionado con el estado global
+  const syncedLead = selectedLead
+    ? leads.find(l => l.id === selectedLead.id) ?? null
+    : null
 
   const filtered = leads.filter(l => {
     const q = search.toLowerCase()
@@ -652,23 +616,11 @@ export default function PipelinePage() {
   const renewals       = leads.filter(l => l.stage === 'renovacion').length
 
   function handleMoveStage(id: string, stage: StageId) {
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, stage } : l))
-    setSelectedLead(prev => prev?.id === id ? { ...prev, stage } : prev)
+    moveStage(id, stage)
   }
 
   function handleAddLead(stageId: StageId) {
-    const newLead: Lead = {
-      id: `L${String(leads.length + 1).padStart(3, '0')}`,
-      name: 'Nuevo Lead',
-      phone: '+57 300 0000000',
-      email: 'nuevo@email.com',
-      age: 0,
-      city: 'Barranquilla',
-      stage: stageId,
-      date: new Date().toISOString().slice(0, 10),
-      tags: [],
-    }
-    setLeads(prev => [...prev, newLead])
+    const newLead = addLead(stageId)
     setSelectedLead(newLead)
   }
 
@@ -779,9 +731,9 @@ export default function PipelinePage() {
       </div>
 
       {/* ── Lead panel ── */}
-      {selectedLead && (
+      {syncedLead && (
         <LeadPanel
-          lead={selectedLead}
+          lead={syncedLead}
           onClose={() => setSelectedLead(null)}
           onMoveStage={handleMoveStage}
         />

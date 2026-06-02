@@ -4,22 +4,16 @@ import {
   Activity, Award, Share2, ShoppingBag, DollarSign,
   Download, Printer,
 } from 'lucide-react'
+import { useLeads } from '../context/LeadsContext'
 
 type Period = 'mes' | 'acumulado'
 
-const KPI_DATA = {
-  mes: {
-    leads: 38, pacientes: 24, citas: 19,
-    conversion: 63, planS1: 8, planS2: 12,
-    referidos: 5, planesVendidos: 14,
-    valorCOP: 8_200_000,
-  },
-  acumulado: {
-    leads: 214, pacientes: 138, citas: 127,
-    conversion: 64, planS1: 47, planS2: 68,
-    referidos: 29, planesVendidos: 115,
-    valorCOP: 62_500_000,
-  },
+// Datos históricos acumulados (mock — se conectará a Supabase)
+const ACUMULADO = {
+  leads: 214, pacientes: 138, citas: 127,
+  conversion: 64, planS1: 47, planS2: 68,
+  referidos: 29, planesVendidos: 115,
+  valorCOP: 62_500_000,
 }
 
 function formatCOP(n: number) {
@@ -73,10 +67,7 @@ function GaugeChart({ value }: { value: number }) {
   return (
     <div className="flex flex-col items-center gap-2">
       <svg width="110" height="66" viewBox="0 0 110 66">
-        <path
-          d="M 11 60 A 44 44 0 0 1 99 60"
-          fill="none" stroke="#F0F0F0" strokeWidth="10" strokeLinecap="round"
-        />
+        <path d="M 11 60 A 44 44 0 0 1 99 60" fill="none" stroke="#F0F0F0" strokeWidth="10" strokeLinecap="round" />
         <path
           d="M 11 60 A 44 44 0 0 1 99 60"
           fill="none" stroke="#12C49A" strokeWidth="10" strokeLinecap="round"
@@ -115,7 +106,24 @@ function BarChart({ value, max, color = '#12C49A' }: { value: number; max: numbe
 
 export default function DashboardPage() {
   const [period, setPeriod] = useState<Period>('mes')
-  const d = KPI_DATA[period]
+  const { leads } = useLeads()
+
+  // KPIs calculados en vivo desde el estado global del Pipeline
+  const citasStages = new Set(['cita_agendada', 'cita_blueprint', 'segunda_cita'])
+  const totalLeads      = leads.length
+  const pacientesActivos = leads.filter(l => l.stage === 'activo').length
+  const citasMedicas    = leads.filter(l => citasStages.has(l.stage)).length
+  const planesVendidos  = leads.filter(l => l.plan !== undefined).length
+  const planS1          = leads.filter(l => l.plan === 'S1').length
+  const planS2          = leads.filter(l => l.plan === 'S2').length
+  const referidos       = leads.filter(l => l.source === 'Referido' || l.tags.includes('Referido')).length
+  const conversion      = totalLeads > 0
+    ? Math.round((leads.filter(l => l.stage === 'activo' || l.stage === 'renovacion').length / totalLeads) * 100)
+    : 0
+  const valorCOP        = planS1 * 500_000 + planS2 * 250_000
+
+  const live = { leads: totalLeads, pacientes: pacientesActivos, citas: citasMedicas, conversion, planS1, planS2, referidos, planesVendidos, valorCOP }
+  const d = period === 'mes' ? live : ACUMULADO
 
   return (
     <div className="h-full overflow-y-auto bg-[#F8FAFB]">
@@ -152,7 +160,6 @@ export default function DashboardPage() {
 
         {/* ── Banner principal COP ── */}
         <div className="relative overflow-hidden bg-gradient-to-br from-[#0D2244] to-[#1A3A6E] rounded-2xl px-8 py-7 mb-8 flex items-center justify-between shadow-[0_4px_24px_rgba(13,34,68,0.22)]">
-          {/* Shimmer sweep */}
           <div className="banner-shimmer" />
           <div>
             <p className="text-white/55 text-sm font-medium mb-2">Valor total planes vendidos</p>
@@ -172,20 +179,19 @@ export default function DashboardPage() {
 
         {/* ── Grid 4 × 2 KPIs ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          <KpiCard icon={<Users size={20} />}         label="Total Leads"              value={d.leads}            sub="Ingresaron al sistema"   trend={12} floatClass="icon-float"   cardDelay="d-0" />
-          <KpiCard icon={<UserCheck size={20} />}     label="Pacientes Activos"        value={d.pacientes}        sub="En seguimiento"          accent="#0D2244" trend={8}  floatClass="icon-float-2" cardDelay="d-1" />
-          <KpiCard icon={<CalendarCheck size={20} />} label="Citas Médicas"            value={d.citas}            sub="Realizadas"              accent="#D4AF5A" trend={5}  floatClass="icon-float-3" cardDelay="d-2" />
-          <KpiCard icon={<ShoppingBag size={20} />}   label="Planes Vendidos"          value={d.planesVendidos}   sub="Nuevos programas"        trend={18}         floatClass="icon-float-4" cardDelay="d-3" />
-          <KpiCard icon={<Award size={20} />}         label="Plan S1 — Control Met."   value={d.planS1}           sub="Pacientes activos S1"    accent="#7C3AED"   floatClass="icon-float-5" cardDelay="d-4" />
-          <KpiCard icon={<Activity size={20} />}      label="Plan S2 — Bienestar Int." value={d.planS2}           sub="Pacientes activos S2"    accent="#0D2244"   floatClass="icon-float-6" cardDelay="d-5" />
-          <KpiCard icon={<Share2 size={20} />}        label="Referidos por Paciente"   value={d.referidos}        sub="Nuevos leads referidos"  accent="#D4AF5A" trend={3} floatClass="icon-float-7" cardDelay="d-6" />
-          <KpiCard icon={<TrendingUp size={20} />}    label="Conversión"               value={`${d.conversion}%`} sub="Leads → Pacientes"      trend={2}          floatClass="icon-float-8" cardDelay="d-7" />
+          <KpiCard icon={<Users size={20} />}         label="Total Leads"              value={d.leads}            sub="Ingresaron al sistema"  trend={12} floatClass="icon-float"   cardDelay="d-0" />
+          <KpiCard icon={<UserCheck size={20} />}     label="Pacientes Activos"        value={d.pacientes}        sub="En seguimiento"         accent="#0D2244" trend={8} floatClass="icon-float-2" cardDelay="d-1" />
+          <KpiCard icon={<CalendarCheck size={20} />} label="Citas Médicas"            value={d.citas}            sub="Agendadas y realizadas"  accent="#D4AF5A" trend={5} floatClass="icon-float-3" cardDelay="d-2" />
+          <KpiCard icon={<ShoppingBag size={20} />}   label="Planes Vendidos"          value={d.planesVendidos}   sub="Nuevos programas"       trend={18}        floatClass="icon-float-4" cardDelay="d-3" />
+          <KpiCard icon={<Award size={20} />}         label="Plan S1 — Control Met."   value={d.planS1}           sub="Pacientes activos S1"   accent="#7C3AED"  floatClass="icon-float-5" cardDelay="d-4" />
+          <KpiCard icon={<Activity size={20} />}      label="Plan S2 — Bienestar Int." value={d.planS2}           sub="Pacientes activos S2"   accent="#0D2244"  floatClass="icon-float-6" cardDelay="d-5" />
+          <KpiCard icon={<Share2 size={20} />}        label="Referidos por Paciente"   value={d.referidos}        sub="Nuevos leads referidos" accent="#D4AF5A" trend={3} floatClass="icon-float-7" cardDelay="d-6" />
+          <KpiCard icon={<TrendingUp size={20} />}    label="Conversión"               value={`${d.conversion}%`} sub="Leads → Pacientes"     trend={2}         floatClass="icon-float-8" cardDelay="d-7" />
         </div>
 
         {/* ── Fila gráficos ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-          {/* Gauge conversión */}
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_2px_16px_rgba(0,0,0,0.05)] flex flex-col gap-4">
             <p className="text-sm font-semibold text-gray-700">% Conversión Leads</p>
             <div className="flex justify-center py-2">
@@ -196,7 +202,6 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Barras citas */}
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_2px_16px_rgba(0,0,0,0.05)] flex flex-col gap-4">
             <p className="text-sm font-semibold text-gray-700">Citas médicas — últimos meses</p>
             <div className="flex-1 flex flex-col justify-end gap-3">
@@ -205,7 +210,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Barras planes */}
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_2px_16px_rgba(0,0,0,0.05)] flex flex-col gap-4">
             <p className="text-sm font-semibold text-gray-700">Planes vendidos — últimos meses</p>
             <div className="flex-1 flex flex-col justify-end gap-3">
