@@ -505,10 +505,10 @@ function LeadPanel({
         className="fixed z-50"
         style={{
           top: '50%',
-          left: '62%',
+          left: '63%',
           transform: 'translate(-50%, -50%)',
-          width: '540px',
-          maxWidth: 'calc(50vw - 16px)',
+          width: '700px',
+          maxWidth: 'calc(100vw - 260px)',
           maxHeight: '90vh',
         }}
       >
