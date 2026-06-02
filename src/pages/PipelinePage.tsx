@@ -737,7 +737,7 @@ export default function PipelinePage() {
 
       {/* ── Kanban board ── */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden">
-        <div className="flex gap-4 h-full px-8 py-5" style={{ minWidth: 'max-content' }}>
+        <div className="flex gap-4 h-full" style={{ minWidth: 'max-content', padding: '20px 32px' }}>
           {STAGES.map(stage => (
             <KanbanColumn
               key={stage.id}
