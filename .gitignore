@@ -1,0 +1,77 @@
+# ── Dependencias ──────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Build / dist ──────────────────────────────────────────
+dist/
+dist-ssr/
+build/
+out/
+
+# ── Variables de entorno — NUNCA versionar ─────────────────
+# Aquí irán: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, etc.
+.env
+.env.local
+.env.development
+.env.development.local
+.env.staging
+.env.staging.local
+.env.production
+.env.production.local
+.env.*.local
+
+# ── Credenciales y secretos ────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+service-account*.json
+
+# ── Logs y depuración ──────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ── Caché y temporales ─────────────────────────────────────
+.cache/
+.temp/
+.tmp/
+*.local
+.eslintcache
+.stylelintcache
+
+# ── IDEs y editores ────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Sistema operativo ──────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Backups y exportaciones de datos ──────────────────────
+# Evitar que exportaciones con datos de pacientes se suban
+*.sql
+*.dump
+*.bak
+*.backup
+exports/
+backups/
+
+# ── Testing y cobertura ────────────────────────────────────
+coverage/
+.nyc_output/
