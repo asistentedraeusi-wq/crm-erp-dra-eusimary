@@ -248,15 +248,15 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 function TabPerfil({ lead, onMoveStage }: { lead: Lead; onMoveStage: (s: StageId) => void }) {
   const stage = STAGES.find(s => s.id === lead.stage)!
   return (
-    <div className="flex flex-col" style={{ gap: '20px' }}>
+    <div className="flex flex-col" style={{ gap: '14px' }}>
       {/* Avatar + name */}
       <div
-        className="flex items-center rounded-2xl"
-        style={{ background: stage.color + '0D', padding: '20px', gap: '16px' }}
+        className="flex items-center rounded-xl"
+        style={{ background: stage.color + '0D', padding: '14px 16px', gap: '14px' }}
       >
         <div
-          className="rounded-2xl flex items-center justify-center font-bold flex-shrink-0"
-          style={{ width: '64px', height: '64px', fontSize: '22px', background: stage.color + '20', color: stage.color }}
+          className="rounded-xl flex items-center justify-center font-bold flex-shrink-0"
+          style={{ width: '52px', height: '52px', fontSize: '18px', background: stage.color + '20', color: stage.color }}
         >
           {lead.name.split(' ').slice(0, 2).map(w => w[0]).join('')}
         </div>
@@ -275,7 +275,7 @@ function TabPerfil({ lead, onMoveStage }: { lead: Lead; onMoveStage: (s: StageId
       </div>
 
       {/* Info grid */}
-      <div className="grid grid-cols-2" style={{ gap: '12px' }}>
+      <div className="grid grid-cols-2" style={{ gap: '8px' }}>
         {[
           { icon: <Phone size={12} />,      label: 'Teléfono', value: lead.phone },
           { icon: <Mail size={12} />,       label: 'Email',    value: lead.email },
@@ -284,7 +284,7 @@ function TabPerfil({ lead, onMoveStage }: { lead: Lead; onMoveStage: (s: StageId
           { icon: <Calendar size={12} />,   label: 'Ingreso',  value: lead.date },
           { icon: <ArrowRight size={12} />, label: 'Fuente',   value: lead.source ?? '—' },
         ].map(({ icon, label, value }) => (
-          <div key={label} className="flex flex-col bg-white rounded-xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]" style={{ gap: '6px', padding: '14px 16px' }}>
+          <div key={label} className="flex flex-col bg-white rounded-xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]" style={{ gap: '4px', padding: '10px 12px' }}>
             <div className="flex items-center gap-1.5 text-gray-400 text-[10px]">
               {icon}
               <span>{label}</span>
@@ -527,13 +527,27 @@ function LeadPanel({
           {/* Panel header */}
           <div
             className="flex items-center justify-between border-b border-gray-100 flex-shrink-0"
-            style={{ padding: '20px 28px' }}
+            style={{ padding: '14px 24px' }}
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: stage.color }} />
+            <div className="flex items-center min-w-0" style={{ gap: '10px' }}>
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: stage.color }} />
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">{stage.label}</span>
+              {/* Número de lead */}
+              <span
+                className="font-bold flex-shrink-0"
+                style={{
+                  fontSize: '10px',
+                  color: '#12C49A',
+                  background: 'rgba(18,196,154,0.10)',
+                  padding: '3px 8px',
+                  borderRadius: '20px',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                Lead No. {lead.id.replace('L', '').padStart(3, '0')}-{lead.date.substring(0, 4)}
+              </span>
             </div>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="flex items-center flex-shrink-0" style={{ gap: '6px' }}>
               <button className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-[#0D2244] transition-colors">
                 <Edit2 size={13} />
               </button>
@@ -547,10 +561,10 @@ function LeadPanel({
           </div>
 
           {/* Lead name bar */}
-          <div className="border-b border-gray-50 flex-shrink-0" style={{ padding: '16px 28px' }}>
-            <h2 className="text-[#0D2244] font-bold" style={{ fontSize: '18px' }}>{lead.name}</h2>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] text-gray-400">{lead.age} años · {lead.city}</span>
+          <div className="border-b border-gray-50 flex-shrink-0" style={{ padding: '12px 24px' }}>
+            <h2 className="text-[#0D2244] font-bold" style={{ fontSize: '17px' }}>{lead.name}</h2>
+            <div className="flex items-center mt-0.5" style={{ gap: '8px' }}>
+              <span style={{ fontSize: '11px', color: '#9CA3AF' }}>{lead.age} años · {lead.city}</span>
               {lead.plan && <TagBadge tag={lead.plan} />}
             </div>
           </div>
@@ -561,45 +575,45 @@ function LeadPanel({
             style={{ overflowX: 'auto', scrollbarWidth: 'none' }}
           >
             <div className="flex" style={{ justifyContent: 'center', minWidth: 'max-content', margin: '0 auto' }}>
-            {TABS.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center whitespace-nowrap border-b-2 font-semibold transition-all duration-150 flex-shrink-0 ${
-                  activeTab === tab.id
-                    ? 'border-[#12C49A] text-[#12C49A]'
-                    : 'border-transparent text-gray-400 hover:text-gray-600'
-                }`}
-                style={{
-                  fontSize: '11px',
-                  paddingLeft: '16px',
-                  paddingRight: '16px',
-                  paddingTop: '14px',
-                  paddingBottom: '14px',
-                  gap: '6px',
-                }}
-              >
-                <span className={activeTab === tab.id ? 'text-[#12C49A]' : 'text-gray-400'}>{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center whitespace-nowrap border-b-2 font-semibold transition-all duration-150 flex-shrink-0 ${
+                    activeTab === tab.id
+                      ? 'border-[#12C49A] text-[#12C49A]'
+                      : 'border-transparent text-gray-400 hover:text-gray-600'
+                  }`}
+                  style={{
+                    fontSize: '11px',
+                    paddingLeft: '14px',
+                    paddingRight: '14px',
+                    paddingTop: '11px',
+                    paddingBottom: '11px',
+                    gap: '5px',
+                  }}
+                >
+                  <span className={activeTab === tab.id ? 'text-[#12C49A]' : 'text-gray-400'}>{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
             </div>
           </div>
 
           {/* Tab content */}
-          <div className="flex-1 overflow-y-auto" style={{ padding: '24px 28px' }}>
+          <div className="flex-1 overflow-y-auto" style={{ padding: '18px 24px' }}>
             {renderTab()}
           </div>
 
           {/* Footer */}
           <div
             className="border-t border-gray-100 flex flex-shrink-0"
-            style={{ padding: '20px 28px', gap: '12px' }}
+            style={{ padding: '14px 24px', gap: '10px' }}
           >
-            <button className="flex-1 h-10 rounded-xl bg-[#12C49A] text-white text-xs font-bold hover:bg-[#0EA882] transition-colors shadow-[0_2px_10px_rgba(18,196,154,0.30)]">
+            <button className="flex-1 h-9 rounded-xl bg-[#12C49A] text-white text-xs font-bold hover:bg-[#0EA882] transition-colors shadow-[0_2px_10px_rgba(18,196,154,0.30)]">
               Guardar cambios
             </button>
-            <button className="flex-1 h-10 rounded-xl border border-gray-200 text-[#0D2244] text-xs font-semibold hover:bg-gray-50 transition-colors">
+            <button className="flex-1 h-9 rounded-xl border border-gray-200 text-[#0D2244] text-xs font-semibold hover:bg-gray-50 transition-colors">
               Registrar actividad
             </button>
           </div>
