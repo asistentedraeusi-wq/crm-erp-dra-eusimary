@@ -557,9 +557,10 @@ function LeadPanel({
 
           {/* Tabs */}
           <div
-            className="flex overflow-x-auto border-b border-gray-100 flex-shrink-0"
-            style={{ paddingLeft: '20px', paddingRight: '20px', scrollbarWidth: 'none' }}
+            className="border-b border-gray-100 flex-shrink-0"
+            style={{ overflowX: 'auto', scrollbarWidth: 'none' }}
           >
+            <div className="flex" style={{ justifyContent: 'center', minWidth: 'max-content', margin: '0 auto' }}>
             {TABS.map(tab => (
               <button
                 key={tab.id}
@@ -582,6 +583,7 @@ function LeadPanel({
                 {tab.label}
               </button>
             ))}
+            </div>
           </div>
 
           {/* Tab content */}
