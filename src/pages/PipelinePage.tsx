@@ -564,11 +564,19 @@ function LeadPanel({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-3 text-[10px] font-semibold whitespace-nowrap border-b-2 transition-all duration-150 flex-shrink-0 ${
+                className={`flex items-center whitespace-nowrap border-b-2 font-semibold transition-all duration-150 flex-shrink-0 ${
                   activeTab === tab.id
                     ? 'border-[#12C49A] text-[#12C49A]'
                     : 'border-transparent text-gray-400 hover:text-gray-600'
                 }`}
+                style={{
+                  fontSize: '11px',
+                  paddingLeft: '16px',
+                  paddingRight: '16px',
+                  paddingTop: '14px',
+                  paddingBottom: '14px',
+                  gap: '6px',
+                }}
               >
                 <span className={activeTab === tab.id ? 'text-[#12C49A]' : 'text-gray-400'}>{tab.icon}</span>
                 {tab.label}
