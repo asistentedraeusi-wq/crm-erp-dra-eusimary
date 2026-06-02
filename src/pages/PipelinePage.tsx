@@ -248,17 +248,20 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 function TabPerfil({ lead, onMoveStage }: { lead: Lead; onMoveStage: (s: StageId) => void }) {
   const stage = STAGES.find(s => s.id === lead.stage)!
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col" style={{ gap: '20px' }}>
       {/* Avatar + name */}
-      <div className="flex items-center gap-5 p-5 rounded-2xl" style={{ background: stage.color + '0D' }}>
+      <div
+        className="flex items-center rounded-2xl"
+        style={{ background: stage.color + '0D', padding: '20px', gap: '16px' }}
+      >
         <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold flex-shrink-0"
-          style={{ background: stage.color + '20', color: stage.color }}
+          className="rounded-2xl flex items-center justify-center font-bold flex-shrink-0"
+          style={{ width: '64px', height: '64px', fontSize: '22px', background: stage.color + '20', color: stage.color }}
         >
           {lead.name.split(' ').slice(0, 2).map(w => w[0]).join('')}
         </div>
         <div>
-          <h3 className="text-[#0D2244] font-bold text-lg leading-tight">{lead.name}</h3>
+          <h3 className="text-[#0D2244] font-bold leading-tight" style={{ fontSize: '17px' }}>{lead.name}</h3>
           <div className="flex items-center gap-2 mt-1">
             <span
               className="text-[10px] font-bold px-2 py-0.5 rounded-full"
@@ -272,7 +275,7 @@ function TabPerfil({ lead, onMoveStage }: { lead: Lead; onMoveStage: (s: StageId
       </div>
 
       {/* Info grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2" style={{ gap: '12px' }}>
         {[
           { icon: <Phone size={12} />,      label: 'Teléfono', value: lead.phone },
           { icon: <Mail size={12} />,       label: 'Email',    value: lead.email },
@@ -281,7 +284,7 @@ function TabPerfil({ lead, onMoveStage }: { lead: Lead; onMoveStage: (s: StageId
           { icon: <Calendar size={12} />,   label: 'Ingreso',  value: lead.date },
           { icon: <ArrowRight size={12} />, label: 'Fuente',   value: lead.source ?? '—' },
         ].map(({ icon, label, value }) => (
-          <div key={label} className="flex flex-col gap-1.5 p-4 bg-white rounded-xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div key={label} className="flex flex-col bg-white rounded-xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]" style={{ gap: '6px', padding: '14px 16px' }}>
             <div className="flex items-center gap-1.5 text-gray-400 text-[10px]">
               {icon}
               <span>{label}</span>
@@ -522,7 +525,10 @@ function LeadPanel({
           }}
         >
           {/* Panel header */}
-          <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100 flex-shrink-0">
+          <div
+            className="flex items-center justify-between border-b border-gray-100 flex-shrink-0"
+            style={{ padding: '20px 28px' }}
+          >
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: stage.color }} />
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">{stage.label}</span>
@@ -541,8 +547,8 @@ function LeadPanel({
           </div>
 
           {/* Lead name bar */}
-          <div className="px-7 py-4 border-b border-gray-50 flex-shrink-0">
-            <h2 className="text-[#0D2244] text-lg font-bold">{lead.name}</h2>
+          <div className="border-b border-gray-50 flex-shrink-0" style={{ padding: '16px 28px' }}>
+            <h2 className="text-[#0D2244] font-bold" style={{ fontSize: '18px' }}>{lead.name}</h2>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[10px] text-gray-400">{lead.age} años · {lead.city}</span>
               {lead.plan && <TagBadge tag={lead.plan} />}
@@ -550,7 +556,10 @@ function LeadPanel({
           </div>
 
           {/* Tabs */}
-          <div className="flex overflow-x-auto border-b border-gray-100 flex-shrink-0 px-5" style={{ scrollbarWidth: 'none' }}>
+          <div
+            className="flex overflow-x-auto border-b border-gray-100 flex-shrink-0"
+            style={{ paddingLeft: '20px', paddingRight: '20px', scrollbarWidth: 'none' }}
+          >
             {TABS.map(tab => (
               <button
                 key={tab.id}
@@ -568,16 +577,19 @@ function LeadPanel({
           </div>
 
           {/* Tab content */}
-          <div className="flex-1 overflow-y-auto px-7 py-6">
+          <div className="flex-1 overflow-y-auto" style={{ padding: '24px 28px' }}>
             {renderTab()}
           </div>
 
           {/* Footer */}
-          <div className="px-7 py-5 border-t border-gray-100 flex gap-3 flex-shrink-0">
-            <button className="flex-1 h-9 rounded-xl bg-[#12C49A] text-white text-xs font-bold hover:bg-[#0EA882] transition-colors shadow-[0_2px_10px_rgba(18,196,154,0.30)]">
+          <div
+            className="border-t border-gray-100 flex flex-shrink-0"
+            style={{ padding: '20px 28px', gap: '12px' }}
+          >
+            <button className="flex-1 h-10 rounded-xl bg-[#12C49A] text-white text-xs font-bold hover:bg-[#0EA882] transition-colors shadow-[0_2px_10px_rgba(18,196,154,0.30)]">
               Guardar cambios
             </button>
-            <button className="flex-1 h-9 rounded-xl border border-gray-200 text-[#0D2244] text-xs font-semibold hover:bg-gray-50 transition-colors">
+            <button className="flex-1 h-10 rounded-xl border border-gray-200 text-[#0D2244] text-xs font-semibold hover:bg-gray-50 transition-colors">
               Registrar actividad
             </button>
           </div>
