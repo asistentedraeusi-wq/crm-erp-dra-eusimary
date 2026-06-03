@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar'
 import DashboardPage from '../pages/DashboardPage'
 import PipelinePage from '../pages/PipelinePage'
 import HistoriaClinicaPage from '../pages/HistoriaClinicaPage'
+import OrdenesPage from '../pages/OrdenesPage'
 import PlaceholderPage from '../pages/PlaceholderPage'
 
 export default function MainLayout() {
@@ -17,6 +18,7 @@ export default function MainLayout() {
           <Route path="historia-clinica"       element={<Navigate to="historia-clinica/nueva" replace />} />
           <Route path="citas"                  element={<Navigate to="/blueprints" replace />} />
           <Route path="blueprints"             element={<HistoriaClinicaPage />} />
+          <Route path="ordenes"                 element={<OrdenesPage />} />
           <Route path="seguimientos"           element={<PlaceholderPage title="Seguimientos" />} />
           <Route path="leads"                  element={<PlaceholderPage title="Base de Leads" />} />
           <Route path="chat"                   element={<PlaceholderPage title="Chat & Redes Sociales" />} />
