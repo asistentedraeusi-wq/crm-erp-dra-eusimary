@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
-// ─── Types (fuente única de verdad para toda la app) ──────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type StageId =
   | 'nuevo' | 'contactado' | 'cita_agendada' | 'cita_blueprint'
@@ -20,6 +20,10 @@ export interface Lead {
   tags: string[]
   source?: string
   notes?: string
+  // Campos clínicos — vienen de la tabla leads de Supabase
+  meta?: string
+  objetivo?: string
+  condicion?: string
 }
 
 // ─── Datos iniciales (mock) ───────────────────────────────────────────────────
@@ -42,6 +46,19 @@ const INITIAL_LEADS: Lead[] = [
   { id: 'L015', name: 'Patricia Soto',    phone: '+57 302 8901234', email: 'psoto@gmail.com',      age: 47, city: 'Barranquilla', stage: 'no_renueva',       date: '2026-01-15', tags: ['No contactable'],  source: 'Instagram' },
 ]
 
+const STORAGE_KEY = 'crm_eusimary_leads_v1'
+
+function loadLeads(): Lead[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return INITIAL_LEADS
+    const parsed = JSON.parse(raw) as Lead[]
+    return parsed.length > 0 ? parsed : INITIAL_LEADS
+  } catch {
+    return INITIAL_LEADS
+  }
+}
+
 // ─── Context ──────────────────────────────────────────────────────────────────
 
 interface LeadsContextValue {
@@ -49,12 +66,18 @@ interface LeadsContextValue {
   moveStage: (id: string, stage: StageId) => void
   addLead: (stageId: StageId) => Lead
   updateLead: (id: string, patch: Partial<Lead>) => void
+  importLeads: (newLeads: Lead[]) => void
 }
 
 const LeadsContext = createContext<LeadsContextValue | null>(null)
 
 export function LeadsProvider({ children }: { children: ReactNode }) {
-  const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS)
+  const [leads, setLeads] = useState<Lead[]>(loadLeads)
+
+  // Persiste en localStorage cada vez que cambia el estado
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(leads))
+  }, [leads])
 
   function moveStage(id: string, stage: StageId) {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, stage } : l))
@@ -80,8 +103,12 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l))
   }
 
+  function importLeads(newLeads: Lead[]) {
+    setLeads(prev => [...prev, ...newLeads])
+  }
+
   return (
-    <LeadsContext.Provider value={{ leads, moveStage, addLead, updateLead }}>
+    <LeadsContext.Provider value={{ leads, moveStage, addLead, updateLead, importLeads }}>
       {children}
     </LeadsContext.Provider>
   )

@@ -159,7 +159,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Banner principal COP ── */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#0D2244] to-[#1A3A6E] rounded-2xl px-8 py-7 mb-8 flex items-center justify-between shadow-[0_4px_24px_rgba(13,34,68,0.22)]">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#0D2244] to-[#1A3A6E] rounded-2xl mb-8 flex items-center justify-between shadow-[0_4px_24px_rgba(13,34,68,0.22)]" style={{ padding: '28px 36px' }}>
           <div className="banner-shimmer" />
           <div>
             <p className="text-white/55 text-sm font-medium mb-2">Valor total planes vendidos</p>

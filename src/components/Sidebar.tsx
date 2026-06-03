@@ -3,7 +3,6 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Kanban,
-  CalendarDays,
   ClipboardList,
   Activity,
   Users,
@@ -17,8 +16,7 @@ import {
 const NAV_ITEMS = [
   { to: '/dashboard',    icon: LayoutDashboard, label: 'KPIs' },
   { to: '/pipeline',     icon: Kanban,          label: 'Pipeline' },
-  { to: '/citas',        icon: CalendarDays,    label: 'Citas' },
-  { to: '/blueprints',   icon: ClipboardList,   label: 'Blueprints' },
+  { to: '/blueprints',   icon: ClipboardList,   label: 'Cita Médica BluePrint' },
   { to: '/seguimientos', icon: Activity,        label: 'Seguimientos' },
   { to: '/leads',        icon: Users,           label: 'Leads' },
   { to: '/chat',         icon: MessageSquare,   label: 'Chat' },

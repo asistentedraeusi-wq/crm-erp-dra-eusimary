@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Lock, User } from 'lucide-react'
+import { Eye, EyeOff, Lock, User, Volume2, VolumeX } from 'lucide-react'
 import logo from '../assets/logo.png'
 import heroBg from '../assets/Video LoginPag.mp4'
 
@@ -10,6 +10,17 @@ export default function LoginPage() {
   const [form, setForm] = useState({ username: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [muted, setMuted] = useState(true)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  function toggleMute() {
+    const video = videoRef.current
+    if (!video) return
+    video.muted = !video.muted
+    setMuted(video.muted)
+    if (!video.paused) return
+    video.play().catch(() => {})
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -39,8 +50,9 @@ export default function LoginPage() {
     <div className="min-h-screen w-full flex">
 
       {/* ── MITAD IZQUIERDA — Video ── */}
-      <div className="hidden md:flex w-1/2 bg-white items-center justify-center overflow-hidden">
+      <div className="hidden md:flex w-1/2 bg-white items-center justify-center overflow-hidden relative">
         <video
+          ref={videoRef}
           src={heroBg}
           autoPlay
           muted
@@ -48,6 +60,21 @@ export default function LoginPage() {
           playsInline
           className="w-[98%] h-[98%] object-contain"
         />
+        {/* Botón silencio/sonido */}
+        <button
+          onClick={toggleMute}
+          style={{
+            position: 'absolute', bottom: '20px', right: '20px',
+            background: 'rgba(13,34,68,0.7)', border: 'none', borderRadius: '50%',
+            width: '36px', height: '36px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', backdropFilter: 'blur(4px)',
+            transition: 'background 0.15s'
+          }}
+          title={muted ? 'Activar sonido' : 'Silenciar'}
+        >
+          {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+        </button>
       </div>
 
       {/* ── MITAD DERECHA — Formulario ── */}
@@ -57,7 +84,7 @@ export default function LoginPage() {
         <div className="hidden md:block absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-[#0D2244] via-[#D4AF5A] to-[#0D2244]" />
 
         {/* Card centrada */}
-        <div className="w-full max-w-[420px] bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.09)] px-12 py-10">
+        <div className="w-full max-w-[420px] bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.09)]" style={{ padding: '40px 52px' }}>
 
           {/* Logo solo en mobile */}
           <div className="flex justify-center mb-8 md:hidden">

@@ -112,3 +112,8 @@ body {
 .d-5  { animation-delay: 0.35s; }
 .d-6  { animation-delay: 0.42s; }
 .d-7  { animation-delay: 0.49s; }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
