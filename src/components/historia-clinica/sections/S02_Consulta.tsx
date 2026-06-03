@@ -1,5 +1,5 @@
 import type { HistoriaClinicaForm } from '../../../types/historia-clinica';
-import { PROGRAMAS, TIPOS_CONSULTA } from '../../../constants/historia-clinica';
+import { PROGRAMAS } from '../../../constants/historia-clinica';
 import SectionHeader from '../ui/SectionHeader';
 import FormField from '../ui/FormField';
 
@@ -28,21 +28,6 @@ export default function S02_Consulta({ form, set }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
       <SectionHeader number={10} title="Datos de la Consulta" />
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
-        <FormField label="Fecha de consulta" required>
-          <input style={INPUT} type="date" value={form.fecha_consulta} onChange={e => set('fecha_consulta', e.target.value)} />
-        </FormField>
-        <FormField label="Tipo de consulta">
-          <select style={SELECT} value={form.tipo_consulta} onChange={e => set('tipo_consulta', e.target.value)}>
-            <option value="">Seleccionar...</option>
-            {TIPOS_CONSULTA.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </FormField>
-        <FormField label="No. Historia Clinica">
-          <input style={{ ...INPUT, background: '#F9FAFB', color: '#9CA3AF' }} value={form.num_hc} readOnly placeholder="Asignado al guardar" />
-        </FormField>
-      </div>
 
       <FormField label="Programa clinico" required>
         <select style={SELECT} value={form.programa} onChange={e => set('programa', e.target.value)}>

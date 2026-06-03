@@ -115,7 +115,7 @@ export const CIE10_FRECUENTES = [
   { code: 'Z71.3',  desc: 'Consulta de nutricion y dietetica' },
 ] as const;
 
-export const TIPOS_DOC = ['Cedula de Ciudadania', 'Cedula Extranjeria', 'Pasaporte', 'Tarjeta de Identidad'] as const;
+export const TIPOS_DOC = ['CC', 'TI', 'RNV', 'Pasaporte'] as const;
 export const ESTADOS_CIVILES = ['Soltero/a', 'Casado/a', 'Union libre', 'Divorciado/a', 'Viudo/a'] as const;
 export const ESCOLARIDADES = ['Primaria', 'Secundaria', 'Tecnico/Tecnologo', 'Universitario', 'Postgrado'] as const;
 export const REGIMENES = ['Contributivo', 'Subsidiado', 'Particular / Privado', 'Especial'] as const;

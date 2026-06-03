@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { FileDown } from 'lucide-react';
+import { generarHistoriaClinicaPDF } from '../../lib/generarHistoriaClinicaPDF';
 import type { HistoriaClinicaForm as HCForm } from '../../types/historia-clinica';
 import { crearHistoriaClinica, actualizarHistoriaClinica } from '../../lib/historia-clinica';
 import HeaderHC from './HeaderHC';
 import FirmaHC from './FirmaHC';
+import S00_HeaderConsulta from './sections/S00_HeaderConsulta';
+import S00b_HeaderSegundaCita from './sections/S00b_HeaderSegundaCita';
 import S01_Identificacion from './sections/S01_Identificacion';
 import S02_Consulta from './sections/S02_Consulta';
-import S09b_ResultadosLab from './sections/S09b_ResultadosLab';
 import S03_Antecedentes from './sections/S03_Antecedentes';
 import S04_Habitos from './sections/S04_Habitos';
 import S05_Gineco from './sections/S05_Gineco';
@@ -15,8 +18,10 @@ import S06_Sintomas from './sections/S06_Sintomas';
 import S07_ExamenFisico from './sections/S07_ExamenFisico';
 import S08_Diagnostico from './sections/S08_Diagnostico';
 import S09_Paraclínicos from './sections/S09_Paraclínicos';
+import S09b_ResultadosLab from './sections/S09b_ResultadosLab';
 import S10_PlanManejo from './sections/S10_PlanManejo';
 import S11_Consentimiento from './sections/S11_Consentimiento';
+import S11b_Consentimiento2 from './sections/S11b_Consentimiento2';
 import S12_NotasMedico from './sections/S12_NotasMedico';
 
 const EMPTY: HCForm = {
@@ -38,9 +43,11 @@ const EMPTY: HCForm = {
   dx1: '', cie1: '', dx2: '', cie2: '',
   examenes: [], exam_otro: '', instr_lab: '',
   res_fecha: '', res_estado: '', res_obs: '', res_archivo_url: '', res_valores: {},
+  fecha_2cita: '', tipo_2cita: '',
   med_nombre: '', dosis: '', frecuencia: '',
   plan_nf: '', nutricion: '', actividad: '', metas: '', proxima: '',
   consent_habeas: false, consent_med: false,
+  consent_habeas_2: false, consent_med_2: false,
   notas: '',
 };
 
@@ -48,7 +55,7 @@ interface Props {
   initialData?: Partial<HCForm>;
   readOnly?: boolean;
   leadId?: string;
-  hcId?: string;           // Si existe → actualizar HC existente
+  hcId?: string;
 }
 
 export default function HistoriaClinicaForm({ initialData, readOnly = false, leadId, hcId }: Props) {
@@ -57,49 +64,65 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
   const [guardando, setGuardando] = useState(false);
   const esActualizacion = Boolean(hcId);
 
+  // Auto-genera num_hc desde tipo_doc + cc en tiempo real
+  useEffect(() => {
+    if (!readOnly && form.tipo_doc && form.cc) {
+      const generado = `${form.tipo_doc}-${form.cc}`;
+      setForm(prev => prev.num_hc === generado ? prev : { ...prev, num_hc: generado });
+    }
+  }, [form.tipo_doc, form.cc, readOnly]);
+
   function set(k: keyof HCForm, v: unknown) {
     if (readOnly) return;
     setForm(prev => ({ ...prev, [k]: v }));
   }
 
-  async function handleGuardar() {
-    // Validar consentimientos (Ley 1581/2012 y Ley 23/1981)
+  // Guardar 1ª Cita — crea HC nueva
+  async function handleGuardarPrimeraCita() {
     if (!form.consent_habeas || !form.consent_med) {
-      toast.error('Debes obtener ambos consentimientos antes de guardar.');
+      toast.error('Debes obtener los consentimientos de la 1ª cita antes de guardar.');
       return;
     }
-
-    // Validar campos obligatorios (Res. 1995/1999)
     const requeridos: Array<keyof HCForm> = ['nombres', 'apellidos', 'cc', 'fecha_nac', 'sexo', 'telefono', 'motivo', 'dx1'];
     const faltantes = requeridos.filter(k => !form[k]);
     if (faltantes.length > 0) {
       toast.error(`Campos obligatorios incompletos: ${faltantes.join(', ')}`);
       return;
     }
-
-    // Decreto 780/2016: si hay medicamento, dosis y frecuencia son obligatorios
     if (form.med_nombre && (!form.dosis || !form.frecuencia)) {
       toast.error('Si prescribes un medicamento, debes indicar dosis y frecuencia (Decreto 780/2016).');
       return;
     }
-
     setGuardando(true);
-
-    let data, error;
-    if (esActualizacion && hcId) {
-      ({ data, error } = await actualizarHistoriaClinica(hcId, form));
-    } else {
-      ({ data, error } = await crearHistoriaClinica(form));
-    }
-
+    const { data, error } = await crearHistoriaClinica(form);
     if (error || !data) {
       toast.error('Error al guardar. Verifica la conexion a Supabase.');
       setGuardando(false);
       return;
     }
+    toast.success('Historia clínica de la 1ª cita guardada correctamente.');
+    navigate(`/historia-clinica/${data.id}`);
+  }
 
-    setForm(prev => ({ ...prev, num_hc: data.id.slice(0, 8).toUpperCase() }));
-    toast.success(esActualizacion ? 'Historia clinica actualizada correctamente.' : 'Historia clinica guardada correctamente.');
+  // Actualizar 2ª Cita — actualiza HC existente
+  async function handleActualizarSegundaCita() {
+    if (!hcId) return;
+    if (!form.consent_habeas_2 || !form.consent_med_2) {
+      toast.error('Debes obtener los consentimientos de la 2ª cita antes de actualizar.');
+      return;
+    }
+    if (form.med_nombre && (!form.dosis || !form.frecuencia)) {
+      toast.error('Si prescribes un medicamento, debes indicar dosis y frecuencia (Decreto 780/2016).');
+      return;
+    }
+    setGuardando(true);
+    const { data, error } = await actualizarHistoriaClinica(hcId, form);
+    if (error || !data) {
+      toast.error('Error al actualizar. Verifica la conexion a Supabase.');
+      setGuardando(false);
+      return;
+    }
+    toast.success('Historia clínica actualizada con los datos de la 2ª cita.');
     navigate(`/historia-clinica/${data.id}`);
   }
 
@@ -111,105 +134,154 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
     boxShadow: '0 1px 4px rgba(18,196,154,0.07)',
   };
 
+  const CONSENT_BTN: React.CSSProperties = {
+    padding: '12px 32px', borderRadius: '10px',
+    border: 'none', fontSize: '14px', fontWeight: '700', color: '#fff',
+    cursor: guardando ? 'not-allowed' : 'pointer',
+    transition: 'all 150ms',
+    display: 'flex', alignItems: 'center', gap: '8px',
+  };
+
+  const Spinner = () => (
+    <svg style={{ animation: 'spin 1s linear infinite', width: '16px', height: '16px' }} viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+      <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+
   return (
     <div>
       <HeaderHC />
 
-      {/* Formulario */}
       <div style={{ background: '#F9FAFB', padding: '28px 36px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+        {/* ── 1ª CITA ─────────────────────────────────────────── */}
+        <S00_HeaderConsulta form={form} set={set as (k: keyof HCForm, v: string) => void} readOnly={readOnly} />
 
         <div style={SECTION_STYLE}>
           <S01_Identificacion form={form} set={set as (k: keyof HCForm, v: string) => void} />
         </div>
-
         <div style={SECTION_STYLE}>
           <S03_Antecedentes form={form} set={set as (k: keyof HCForm, v: string | string[]) => void} />
         </div>
-
         <div style={SECTION_STYLE}>
           <S04_Habitos form={form} set={set as (k: keyof HCForm, v: string) => void} />
         </div>
-
         <div style={SECTION_STYLE}>
           <S05_Gineco form={form} set={set as (k: keyof HCForm, v: string | boolean) => void} sexo={form.sexo} />
         </div>
-
         <div style={SECTION_STYLE}>
           <S06_Sintomas form={form} set={set as (k: keyof HCForm, v: string | string[]) => void} />
         </div>
-
         <div style={SECTION_STYLE}>
           <S07_ExamenFisico form={form} set={set as (k: keyof HCForm, v: string) => void} />
         </div>
-
         <div style={SECTION_STYLE}>
           <S08_Diagnostico form={form} set={set as (k: keyof HCForm, v: string) => void} />
         </div>
-
         <div style={SECTION_STYLE}>
           <S09_Paraclínicos form={form} set={set as (k: keyof HCForm, v: string | string[]) => void} leadId={leadId} />
         </div>
 
-        <div style={SECTION_STYLE}>
-          <S09b_ResultadosLab form={form} set={set} readOnly={readOnly} />
-        </div>
-
-        <div style={SECTION_STYLE}>
-          <S02_Consulta form={form} set={set as (k: keyof HCForm, v: string) => void} />
-        </div>
-
-        <div style={SECTION_STYLE}>
-          <S10_PlanManejo form={form} set={set as (k: keyof HCForm, v: string) => void} />
-        </div>
-
+        {/* Consentimientos 1ª Cita */}
         <div style={{ ...SECTION_STYLE, background: 'linear-gradient(135deg, #E6FAF5, #FFF8E7)', borderColor: '#D4AF37' }}>
           <S11_Consentimiento form={form} set={set as (k: keyof HCForm, v: boolean) => void} />
         </div>
 
+        {/* Botón guardar 1ª Cita */}
+        {!readOnly && !esActualizacion && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '4px', paddingBottom: '4px' }}>
+            <button type="button" onClick={() => navigate(-1)} style={{
+              padding: '12px 24px', borderRadius: '10px',
+              border: '1px solid #E5E7EB', background: '#fff',
+              fontSize: '14px', fontWeight: '600', color: '#6B7280', cursor: 'pointer',
+            }}>
+              Cancelar
+            </button>
+            <button type="button" onClick={handleGuardarPrimeraCita} disabled={guardando}
+              style={{ ...CONSENT_BTN, background: guardando ? '#9CA3AF' : '#0A3D2E', boxShadow: guardando ? 'none' : '0 4px 18px rgba(10,61,46,0.35)' }}>
+              {guardando ? <><Spinner /> Guardando...</> : '✦ Guardar Historia Clínica — 1ª Cita'}
+            </button>
+          </div>
+        )}
+
+        {/* ── 2ª CITA ─────────────────────────────────────────── */}
+        <S00b_HeaderSegundaCita form={form} set={set as (k: keyof HCForm, v: string) => void} readOnly={readOnly} />
+
+        <div style={SECTION_STYLE}>
+          <S09b_ResultadosLab form={form} set={set} readOnly={readOnly} />
+        </div>
+        <div style={SECTION_STYLE}>
+          <S02_Consulta form={form} set={set as (k: keyof HCForm, v: string) => void} />
+        </div>
+        <div style={SECTION_STYLE}>
+          <S10_PlanManejo form={form} set={set as (k: keyof HCForm, v: string) => void} />
+        </div>
         <div style={SECTION_STYLE}>
           <S12_NotasMedico form={form} set={set as (k: keyof HCForm, v: string) => void} />
         </div>
 
-        {/* Boton guardar */}
-        {!readOnly && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '8px' }}>
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              style={{
-                padding: '12px 24px', borderRadius: '10px',
-                border: '1px solid #E5E7EB', background: '#fff',
-                fontSize: '14px', fontWeight: '600', color: '#6B7280',
-                cursor: 'pointer',
-              }}
-            >
+        {/* Consentimientos 2ª Cita */}
+        <div style={{ ...SECTION_STYLE, background: 'linear-gradient(135deg, #FFFDF0, #FFF8E7)', borderColor: '#D4AF37' }}>
+          <S11b_Consentimiento2 form={form} set={set as (k: keyof HCForm, v: boolean) => void} />
+        </div>
+
+        {/* Botón actualizar 2ª Cita */}
+        {!readOnly && esActualizacion && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '4px', paddingBottom: '4px' }}>
+            <button type="button" onClick={() => navigate(-1)} style={{
+              padding: '12px 24px', borderRadius: '10px',
+              border: '1px solid #E5E7EB', background: '#fff',
+              fontSize: '14px', fontWeight: '600', color: '#6B7280', cursor: 'pointer',
+            }}>
               Cancelar
             </button>
-            <button
-              type="button"
-              onClick={handleGuardar}
-              disabled={guardando}
-              style={{
-                padding: '12px 32px', borderRadius: '10px',
-                border: 'none', background: guardando ? '#9CA3AF' : '#12C49A',
-                fontSize: '14px', fontWeight: '700', color: '#fff',
-                cursor: guardando ? 'not-allowed' : 'pointer',
-                boxShadow: guardando ? 'none' : '0 4px 18px rgba(18,196,154,0.4)',
-                transition: 'all 150ms',
-              }}
-            >
-              {guardando ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <svg style={{ animation: 'spin 1s linear infinite', width: '16px', height: '16px' }} viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
-                    <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                  </svg>
-                  Guardando...
-                </span>
-              ) : esActualizacion ? 'Actualizar Historia Clínica' : 'Guardar Historia Clínica'}
+            <button type="button" onClick={handleActualizarSegundaCita} disabled={guardando}
+              style={{ ...CONSENT_BTN, background: guardando ? '#9CA3AF' : '#D97706', boxShadow: guardando ? 'none' : '0 4px 18px rgba(217,119,6,0.35)' }}>
+              {guardando ? <><Spinner /> Actualizando...</> : '✦ Actualizar Historia Clínica — 2ª Cita'}
             </button>
           </div>
         )}
+
+        {/* ── Botón Generar PDF Completo (siempre visible si hay datos) ── */}
+        {form.nombres && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', paddingTop: '8px', paddingBottom: '12px' }}>
+            <button
+              type="button"
+              onClick={async () => {
+                await generarHistoriaClinicaPDF(form, {
+                  leadId: leadId,
+                  hcId:   hcId,
+                  onSaved: () => toast.success(
+                    leadId
+                      ? 'PDF generado y guardado en Soportes del paciente.'
+                      : 'PDF generado correctamente.'
+                  ),
+                  onError: () => toast.warning('PDF generado. No se pudo guardar en Soportes — verifica el bucket "soportes" en Supabase.'),
+                });
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '9px',
+                background: '#fff', border: '1.5px solid #0A3D2E',
+                borderRadius: '10px', padding: '11px 28px',
+                fontSize: '13px', fontWeight: 700, color: '#0A3D2E',
+                cursor: 'pointer', boxShadow: '0 2px 8px rgba(10,61,46,0.10)',
+                transition: 'all 150ms',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#0A3D2E'; (e.currentTarget as HTMLButtonElement).style.color = '#fff'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#fff'; (e.currentTarget as HTMLButtonElement).style.color = '#0A3D2E'; }}
+            >
+              <FileDown size={16} />
+              Generar PDF — Copia Historia Clínica
+            </button>
+            {leadId && (
+              <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
+                Se guardará automáticamente en Soportes del paciente
+              </span>
+            )}
+          </div>
+        )}
+
       </div>
 
       <FirmaHC form={form} />

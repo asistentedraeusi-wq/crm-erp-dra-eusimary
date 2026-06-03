@@ -115,6 +115,10 @@ export interface HistoriaClinicaForm {
   res_archivo_url: string;
   res_valores:    Record<string, ResultadoExamen>;
 
+  // S00b — Header 2ª Cita (fecha y tipo de la segunda consulta)
+  fecha_2cita:    string;
+  tipo_2cita:     string;
+
   // S10 — Plan de Manejo
   med_nombre:     string;
   dosis:          string;
@@ -125,9 +129,13 @@ export interface HistoriaClinicaForm {
   metas:          string;
   proxima:        string;
 
-  // S11 — Consentimientos
+  // S11 — Consentimientos 1ª Cita
   consent_habeas: boolean;
   consent_med:    boolean;
+
+  // S11b — Consentimientos 2ª Cita
+  consent_habeas_2: boolean;
+  consent_med_2:    boolean;
 
   // S12 — Notas medico
   notas:          string;

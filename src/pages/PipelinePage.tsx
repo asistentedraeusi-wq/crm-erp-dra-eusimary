@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   X, Plus, Search, Phone, Mail, ChevronRight,
@@ -6,8 +6,10 @@ import {
   Clock, Activity, CreditCard, Stethoscope,
   MoreHorizontal, Calendar, MapPin, Edit2, ArrowRight,
   Download, Database, CheckCircle2, AlertCircle, Loader2, Copy,
+  ExternalLink, Trash2, FileCode,
 } from 'lucide-react'
 import { useLeads, type Lead, type StageId } from '../context/LeadsContext'
+import { listarSoportes, eliminarSoporte, TIPO_LABELS, TIPO_COLORS, type Soporte } from '../lib/soportes'
 
 // ─── Stages config ───────────────────────────────────────────────────────────
 
@@ -467,6 +469,116 @@ function TabIVC() {
   )
 }
 
+function TabSoportes({ lead }: { lead: Lead }) {
+  const [soportes, setSoportes]   = useState<Soporte[]>([])
+  const [loading,  setLoading]    = useState(true)
+  const [eliminando, setEliminando] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    listarSoportes(lead.id).then(({ data }) => {
+      setSoportes(data ?? [])
+      setLoading(false)
+    })
+  }, [lead.id])
+
+  async function handleEliminar(s: Soporte) {
+    if (!confirm(`¿Eliminar "${s.nombre}"?`)) return
+    setEliminando(s.id)
+    await eliminarSoporte(s.id, s.url)
+    setSoportes(prev => prev.filter(x => x.id !== s.id))
+    setEliminando(null)
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-32 text-gray-400 text-sm gap-2">
+      <Loader2 size={16} className="animate-spin" /> Cargando soportes...
+    </div>
+  )
+
+  if (!soportes.length) return (
+    <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
+      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+        <Paperclip size={18} className="text-gray-400" />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-gray-500">Sin documentos</p>
+        <p className="text-xs text-gray-400 mt-0.5">Los PDF generados aparecerán aquí automáticamente</p>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+        {soportes.length} documento{soportes.length !== 1 ? 's' : ''}
+      </p>
+      {soportes.map(s => {
+        const color  = TIPO_COLORS[s.tipo] ?? '#6B7280'
+        const label  = TIPO_LABELS[s.tipo]  ?? 'Documento'
+        const fecha  = new Date(s.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
+        return (
+          <div key={s.id} style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            background: '#F9FAFB', borderRadius: '10px',
+            padding: '10px 12px', border: '1px solid #E5E7EB',
+          }}>
+            <div style={{
+              width: '34px', height: '34px', borderRadius: '8px', flexShrink: 0,
+              background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <FileCode size={16} style={{ color }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: '12px', fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {s.nombre}
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                <span style={{
+                  fontSize: '10px', fontWeight: 700, color, background: color + '18',
+                  borderRadius: '5px', padding: '1px 6px',
+                }}>
+                  {label}
+                </span>
+                <span style={{ fontSize: '10px', color: '#9CA3AF' }}>{fecha}</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+              <a
+                href={s.url} target="_blank" rel="noopener noreferrer"
+                style={{
+                  width: '28px', height: '28px', borderRadius: '7px',
+                  background: color + '18', border: 'none', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  textDecoration: 'none',
+                }}
+                title="Abrir documento"
+              >
+                <ExternalLink size={13} style={{ color }} />
+              </a>
+              <button
+                onClick={() => handleEliminar(s)}
+                disabled={eliminando === s.id}
+                style={{
+                  width: '28px', height: '28px', borderRadius: '7px',
+                  background: '#FEF2F2', border: 'none', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                }}
+                title="Eliminar"
+              >
+                {eliminando === s.id
+                  ? <Loader2 size={13} className="animate-spin text-red-400" />
+                  : <Trash2 size={13} style={{ color: '#EF4444' }} />
+                }
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function TabPlaceholder({ label, icon }: { label: string; icon: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
@@ -631,7 +743,7 @@ function LeadPanel({
       case 'perfil':      return <TabPerfil lead={lead} onMoveStage={s => onMoveStage(lead.id, s)} />
       case 'ivc':         return <TabIVC />
       case 'historia':    return <TabHistoriaClinica lead={lead} />
-      case 'soportes':    return <TabPlaceholder label="Soportes / Adjuntos" icon={<Paperclip size={20} />} />
+      case 'soportes':    return <TabSoportes lead={lead} />
       case 'emails':      return <TabPlaceholder label="Emails" icon={<Mail size={20} />} />
       case 'historial':   return <TabHistorial />
       case 'seguimiento': return <TabPlaceholder label="Seguimiento Clínico" icon={<Activity size={20} />} />

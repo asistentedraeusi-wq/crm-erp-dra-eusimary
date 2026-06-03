@@ -170,11 +170,11 @@ export default function HistoriaClinicaPage() {
         )}
 
         {!loading && !error && !esNueva && datos && !modoEdicion && (
-          <HistoriaClinicaForm initialData={datos} readOnly />
+          <HistoriaClinicaForm initialData={datos} readOnly leadId={leadId} />
         )}
 
         {!loading && !error && !esNueva && datos && modoEdicion && (
-          <HistoriaClinicaForm initialData={datos} hcId={id} />
+          <HistoriaClinicaForm initialData={datos} hcId={id} leadId={leadId} />
         )}
       </div>
     </div>
