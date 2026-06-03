@@ -67,6 +67,35 @@ export async function listarHistorias(limite = 50) {
   }
 }
 
+export async function actualizarHistoriaClinica(
+  id: string,
+  datos: HistoriaClinicaForm
+): Promise<{ data: HistoriaClinicaDB | null; error: Error | null }> {
+  try {
+    const client = requireClient();
+    const { data, error } = await client
+      .from('historias_clinicas')
+      .update({
+        datos,
+        programa:       datos.programa,
+        modalidad:      datos.modalidad,
+        consent_habeas: datos.consent_habeas,
+        consent_med:    datos.consent_med,
+        updated_at:     new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    return {
+      data: data as HistoriaClinicaDB | null,
+      error: error ? new Error(error.message) : null,
+    };
+  } catch (e) {
+    return { data: null, error: e as Error };
+  }
+}
+
 export async function buscarPacientePorCC(cc: string): Promise<Partial<HistoriaClinicaForm> | null> {
   try {
     const client = requireClient();

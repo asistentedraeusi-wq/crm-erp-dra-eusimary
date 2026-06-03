@@ -10,7 +10,7 @@ interface Props {
 export default function S12_NotasMedico({ form, set }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      <SectionHeader number={12} title="Notas del Medico" />
+      <SectionHeader number={13} title="Notas del Medico" />
 
       <FormField label="Observaciones adicionales" hint="Informacion clinica relevante no contemplada en las secciones anteriores">
         <textarea

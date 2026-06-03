@@ -1,4 +1,12 @@
 export type Regimen = 'Contributivo' | 'Subsidiado' | 'Particular / Privado' | 'Especial';
+
+export interface ResultadoExamen {
+  valor:  string;
+  unidad: string;
+  estado: '' | 'normal' | 'anormal' | 'critico';
+  obs:    string;
+}
+
 export type Sexo = 'Femenino' | 'Masculino';
 export type Modalidad = 'presencial' | 'telemedicina';
 export type SexoBiologico = 'F' | 'M';
@@ -99,6 +107,13 @@ export interface HistoriaClinicaForm {
   examenes:       string[];
   exam_otro:      string;
   instr_lab:      string;
+
+  // S09b — Resultados de Laboratorio (2da Cita)
+  res_fecha:      string;
+  res_estado:     '' | 'pendientes' | 'parciales' | 'completos';
+  res_obs:        string;
+  res_archivo_url: string;
+  res_valores:    Record<string, ResultadoExamen>;
 
   // S10 — Plan de Manejo
   med_nombre:     string;

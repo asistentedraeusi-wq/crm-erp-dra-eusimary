@@ -27,7 +27,7 @@ interface Props {
 export default function S02_Consulta({ form, set }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      <SectionHeader number={9} title="Datos de la Consulta" />
+      <SectionHeader number={10} title="Datos de la Consulta" />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
         <FormField label="Fecha de consulta" required>

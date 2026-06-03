@@ -30,7 +30,7 @@ interface Props {
 export default function S10_PlanManejo({ form, set }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <SectionHeader number={10} title="Plan de Manejo" />
+      <SectionHeader number={11} title="Plan de Manejo" />
 
       {/* Medicacion */}
       <div style={{ padding: '14px', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E5E7EB' }}>

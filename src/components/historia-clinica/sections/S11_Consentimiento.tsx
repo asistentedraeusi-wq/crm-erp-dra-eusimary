@@ -48,7 +48,7 @@ export default function S11_Consentimiento({ form, set }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      <SectionHeader number={11} title="Consentimientos Informados" gold />
+      <SectionHeader number={12} title="Consentimientos Informados" gold />
 
       <div style={{
         background: 'linear-gradient(135deg, #E6FAF5, #FFF8E7)',

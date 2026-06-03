@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { HistoriaClinicaForm as HCForm } from '../../types/historia-clinica';
-import { crearHistoriaClinica } from '../../lib/historia-clinica';
+import { crearHistoriaClinica, actualizarHistoriaClinica } from '../../lib/historia-clinica';
 import HeaderHC from './HeaderHC';
 import FirmaHC from './FirmaHC';
 import S01_Identificacion from './sections/S01_Identificacion';
 import S02_Consulta from './sections/S02_Consulta';
+import S09b_ResultadosLab from './sections/S09b_ResultadosLab';
 import S03_Antecedentes from './sections/S03_Antecedentes';
 import S04_Habitos from './sections/S04_Habitos';
 import S05_Gineco from './sections/S05_Gineco';
@@ -36,6 +37,7 @@ const EMPTY: HCForm = {
   tp: '', th: '', ta: '', ts: 'F', tw: '', thip: '', tn: '', tc: '',
   dx1: '', cie1: '', dx2: '', cie2: '',
   examenes: [], exam_otro: '', instr_lab: '',
+  res_fecha: '', res_estado: '', res_obs: '', res_archivo_url: '', res_valores: {},
   med_nombre: '', dosis: '', frecuencia: '',
   plan_nf: '', nutricion: '', actividad: '', metas: '', proxima: '',
   consent_habeas: false, consent_med: false,
@@ -46,12 +48,14 @@ interface Props {
   initialData?: Partial<HCForm>;
   readOnly?: boolean;
   leadId?: string;
+  hcId?: string;           // Si existe → actualizar HC existente
 }
 
-export default function HistoriaClinicaForm({ initialData, readOnly = false, leadId }: Props) {
+export default function HistoriaClinicaForm({ initialData, readOnly = false, leadId, hcId }: Props) {
   const navigate = useNavigate();
   const [form, setForm] = useState<HCForm>({ ...EMPTY, ...initialData });
   const [guardando, setGuardando] = useState(false);
+  const esActualizacion = Boolean(hcId);
 
   function set(k: keyof HCForm, v: unknown) {
     if (readOnly) return;
@@ -80,7 +84,13 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
     }
 
     setGuardando(true);
-    const { data, error } = await crearHistoriaClinica(form);
+
+    let data, error;
+    if (esActualizacion && hcId) {
+      ({ data, error } = await actualizarHistoriaClinica(hcId, form));
+    } else {
+      ({ data, error } = await crearHistoriaClinica(form));
+    }
 
     if (error || !data) {
       toast.error('Error al guardar. Verifica la conexion a Supabase.');
@@ -89,7 +99,7 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
     }
 
     setForm(prev => ({ ...prev, num_hc: data.id.slice(0, 8).toUpperCase() }));
-    toast.success('Historia clinica guardada correctamente.');
+    toast.success(esActualizacion ? 'Historia clinica actualizada correctamente.' : 'Historia clinica guardada correctamente.');
     navigate(`/historia-clinica/${data.id}`);
   }
 
@@ -138,6 +148,10 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
 
         <div style={SECTION_STYLE}>
           <S09_Paraclínicos form={form} set={set as (k: keyof HCForm, v: string | string[]) => void} leadId={leadId} />
+        </div>
+
+        <div style={SECTION_STYLE}>
+          <S09b_ResultadosLab form={form} set={set} readOnly={readOnly} />
         </div>
 
         <div style={SECTION_STYLE}>
@@ -192,7 +206,7 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
                   </svg>
                   Guardando...
                 </span>
-              ) : 'Guardar Historia Clinica'}
+              ) : esActualizacion ? 'Actualizar Historia Clínica' : 'Guardar Historia Clínica'}
             </button>
           </div>
         )}
