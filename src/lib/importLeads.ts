@@ -12,6 +12,7 @@ interface SupabaseLeadRow {
   meta: string | null
   objetivo: string | null
   condicion: string | null
+  fuente: string | null
 }
 
 function assignLeadNo(seq: number): string {
@@ -39,6 +40,7 @@ function mapRow(row: SupabaseLeadRow, assignedId: string): Lead {
     meta:      row.meta      ?? undefined,
     objetivo:  row.objetivo  ?? undefined,
     condicion: row.condicion ?? undefined,
+    fuente:    row.fuente    ?? undefined,
   }
 }
 

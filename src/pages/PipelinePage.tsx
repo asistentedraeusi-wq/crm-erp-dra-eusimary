@@ -385,12 +385,20 @@ function TabPerfil({ lead, onMoveStage }: { lead: Lead; onMoveStage: (s: StageId
         </div>
       )}
 
-      {/* Tags */}
-      {lead.tags.length > 0 && (
+      {/* Fuente */}
+      {lead.fuente && (
         <div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Etiquetas</p>
-          <div className="flex flex-wrap gap-1.5">
-            {lead.tags.map(t => <TagBadge key={t} tag={t} />)}
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Fuente</p>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '5px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 700,
+              background: lead.fuente === 'Web' ? '#EFF6FF' : '#E6FAF5',
+              color:      lead.fuente === 'Web' ? '#1D4ED8'  : '#0A3D2E',
+              border:     `1px solid ${lead.fuente === 'Web' ? '#BFDBFE' : '#12C49A44'}`,
+            }}>
+              {lead.fuente === 'Web' ? '🌐' : '📋'} {lead.fuente}
+            </span>
           </div>
         </div>
       )}

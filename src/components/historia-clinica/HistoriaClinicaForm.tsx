@@ -5,6 +5,7 @@ import { FileDown } from 'lucide-react';
 import { generarHistoriaClinicaPDF } from '../../lib/generarHistoriaClinicaPDF';
 import type { HistoriaClinicaForm as HCForm } from '../../types/historia-clinica';
 import { crearHistoriaClinica, actualizarHistoriaClinica } from '../../lib/historia-clinica';
+import { useLeads } from '../../context/LeadsContext';
 import HeaderHC from './HeaderHC';
 import FirmaHC from './FirmaHC';
 import S00_HeaderConsulta from './sections/S00_HeaderConsulta';
@@ -60,6 +61,7 @@ interface Props {
 
 export default function HistoriaClinicaForm({ initialData, readOnly = false, leadId, hcId }: Props) {
   const navigate = useNavigate();
+  const { moveStage } = useLeads();
   const [form, setForm] = useState<HCForm>({ ...EMPTY, ...initialData });
   const [guardando, setGuardando] = useState(false);
   const esActualizacion = Boolean(hcId);
@@ -101,6 +103,7 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
       return;
     }
     toast.success('Historia clínica de la 1ª cita guardada correctamente.');
+    if (leadId) moveStage(leadId, 'paraclínicos');
     navigate(`/historia-clinica/${data.id}`);
   }
 

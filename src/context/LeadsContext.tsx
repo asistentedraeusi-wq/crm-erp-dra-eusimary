@@ -24,6 +24,7 @@ export interface Lead {
   meta?: string
   objetivo?: string
   condicion?: string
+  fuente?: string
 }
 
 // ─── Datos iniciales (mock) ───────────────────────────────────────────────────
