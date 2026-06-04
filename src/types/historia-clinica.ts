@@ -119,7 +119,7 @@ export interface HistoriaClinicaForm {
   fecha_2cita:    string;
   tipo_2cita:     string;
 
-  // S10 — Plan de Manejo
+  // S10 — Plan de Manejo (campos base HC)
   med_nombre:     string;
   dosis:          string;
   frecuencia:     string;
@@ -128,6 +128,23 @@ export interface HistoriaClinicaForm {
   actividad:      string;
   metas:          string;
   proxima:        string;
+
+  // S10 — Kit del Paciente (datos estructurados para generación PDF)
+  pm_plan_base:      string;   // 'bajo-ig' | 'cetogenico' | 'mediterraneo' | 'bajo-carbohidratos' | 'proteina-alta'
+  pm_proteinas:      string[];
+  pm_vegetales:      string[];
+  pm_restricciones:  string[];
+  pm_snacks:         string[];
+  pm_hidratacion:    string;   // '8' | '10' | '12' | '15'
+  pm_tipo_aerobico:  string;
+  pm_minutos_sesion: string;   // '20' | '30' | '40' | '45' | '60'
+  pm_dias_aerobico:  string;   // '3' | '4' | '5' | '6'
+  pm_nivel_fuerza:   string;   // 'inicial' | 'intermedio' | 'avanzado' | 'no_aplica'
+  pm_dias_fuerza:    string[];
+  pm_suplementacion: string[];
+  pm_alertas:        string[];
+  pm_nota_medica:    string;
+  pm_mes_titulacion: string;   // '1' | '2' | '3' — solo S1
 
   // S11 — Consentimientos 1ª Cita
   consent_habeas: boolean;

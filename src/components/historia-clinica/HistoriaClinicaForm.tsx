@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { FileDown } from 'lucide-react';
 import { generarHistoriaClinicaPDF } from '../../lib/generarHistoriaClinicaPDF';
+import { generarKitPaciente } from '../../lib/generarKitPaciente';
 import type { HistoriaClinicaForm as HCForm } from '../../types/historia-clinica';
 import { crearHistoriaClinica, actualizarHistoriaClinica } from '../../lib/historia-clinica';
 import { useLeads } from '../../context/LeadsContext';
@@ -47,6 +48,10 @@ const EMPTY: HCForm = {
   fecha_2cita: '', tipo_2cita: '',
   med_nombre: '', dosis: '', frecuencia: '',
   plan_nf: '', nutricion: '', actividad: '', metas: '', proxima: '',
+  pm_plan_base: '', pm_proteinas: [], pm_vegetales: [], pm_restricciones: [],
+  pm_snacks: [], pm_hidratacion: '', pm_tipo_aerobico: '', pm_minutos_sesion: '',
+  pm_dias_aerobico: '', pm_nivel_fuerza: '', pm_dias_fuerza: [],
+  pm_suplementacion: [], pm_alertas: [], pm_nota_medica: '', pm_mes_titulacion: '',
   consent_habeas: false, consent_med: false,
   consent_habeas_2: false, consent_med_2: false,
   notas: '',
@@ -218,7 +223,7 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
           <S02_Consulta form={form} set={set as (k: keyof HCForm, v: string) => void} />
         </div>
         <div style={SECTION_STYLE}>
-          <S10_PlanManejo form={form} set={set as (k: keyof HCForm, v: string) => void} />
+          <S10_PlanManejo form={form} set={set as (k: keyof HCForm, v: string | string[]) => void} />
         </div>
         <div style={SECTION_STYLE}>
           <S12_NotasMedico form={form} set={set as (k: keyof HCForm, v: string) => void} />
@@ -246,20 +251,17 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
           </div>
         )}
 
-        {/* ── Botón Generar PDF Completo (siempre visible si hay datos) ── */}
+        {/* ── Botones PDF / Kit ── */}
         {form.nombres && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', paddingTop: '8px', paddingBottom: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', paddingTop: '8px', paddingBottom: '12px' }}>
+
+            {/* Botón HC PDF */}
             <button
               type="button"
               onClick={async () => {
                 await generarHistoriaClinicaPDF(form, {
-                  leadId: leadId,
-                  hcId:   hcId,
-                  onSaved: () => toast.success(
-                    leadId
-                      ? 'PDF generado y guardado en Soportes del paciente.'
-                      : 'PDF generado correctamente.'
-                  ),
+                  leadId, hcId,
+                  onSaved: () => toast.success(leadId ? 'PDF generado y guardado en Soportes.' : 'PDF generado correctamente.'),
                   onError: () => toast.warning('PDF generado. No se pudo guardar en Soportes — verifica el bucket "soportes" en Supabase.'),
                 });
               }}
@@ -277,9 +279,45 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
               <FileDown size={16} />
               Generar PDF — Copia Historia Clínica
             </button>
+
+            {/* Separador */}
+            <div style={{ width: '100%', maxWidth: '420px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ flex: 1, height: '1px', background: '#E5E7EB' }} />
+              <span style={{ fontSize: '11px', color: '#9CA3AF' }}>Kit del Paciente</span>
+              <div style={{ flex: 1, height: '1px', background: '#E5E7EB' }} />
+            </div>
+
+            {/* Botón Kit del Paciente */}
+            <button
+              type="button"
+              onClick={async () => {
+                if (!form.pm_plan_base) {
+                  toast.warning('Completa el Plan de Manejo (Punto 11) antes de generar el Kit.');
+                  return;
+                }
+                await generarKitPaciente(form, {
+                  leadId, hcId,
+                  onSaved: () => toast.success('Kit del Paciente generado y guardado en Soportes.', { description: 'Disponible en la pestaña Soportes del paciente.' }),
+                  onError: () => toast.warning('Kit generado. No se pudo guardar en Soportes.'),
+                });
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '9px',
+                background: '#12C49A', border: 'none',
+                borderRadius: '10px', padding: '13px 32px',
+                fontSize: '14px', fontWeight: 700, color: '#fff',
+                cursor: 'pointer', boxShadow: '0 4px 18px rgba(18,196,154,0.35)',
+                transition: 'all 150ms',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#0A9278'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#12C49A'; }}
+            >
+              🩺 Generar Kit para el Paciente
+            </button>
+
             {leadId && (
               <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
-                Se guardará automáticamente en Soportes del paciente
+                Ambos documentos se guardan en Soportes del paciente
               </span>
             )}
           </div>

@@ -20,6 +20,7 @@ export const TIPO_LABELS: Record<string, string> = {
   orden_medica:     'Orden Médica',
   resultado_lab:    'Resultado Lab.',
   consentimiento:   'Consentimiento',
+  kit_paciente:     'Kit del Paciente',
   otro:             'Documento',
 };
 
@@ -28,6 +29,7 @@ export const TIPO_COLORS: Record<string, string> = {
   orden_medica:     '#12C49A',
   resultado_lab:    '#D97706',
   consentimiento:   '#6366F1',
+  kit_paciente:     '#D4AF37',
   otro:             '#6B7280',
 };
 
