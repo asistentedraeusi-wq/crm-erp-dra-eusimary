@@ -112,11 +112,10 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
     navigate(`/historia-clinica/${data.id}`);
   }
 
-  // Actualizar 2ª Cita — actualiza HC existente
-  async function handleActualizarSegundaCita() {
-    if (!hcId) return;
+  // Guardar 2ª Cita — crea HC nueva o actualiza existente según contexto
+  async function handleGuardarSegundaCita() {
     if (!form.consent_habeas_2 || !form.consent_med_2) {
-      toast.error('Debes obtener los consentimientos de la 2ª cita antes de actualizar.');
+      toast.error('Debes obtener los consentimientos de la 2ª cita antes de guardar.');
       return;
     }
     if (form.med_nombre && (!form.dosis || !form.frecuencia)) {
@@ -124,14 +123,34 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
       return;
     }
     setGuardando(true);
-    const { data, error } = await actualizarHistoriaClinica(hcId, form);
-    if (error || !data) {
-      toast.error('Error al actualizar. Verifica la conexion a Supabase.');
-      setGuardando(false);
-      return;
+
+    if (esActualizacion && hcId) {
+      // HC existente — actualizar
+      const { data, error } = await actualizarHistoriaClinica(hcId, form);
+      if (error || !data) {
+        toast.error('Error al guardar. Verifica la conexion a Supabase.');
+        setGuardando(false);
+        return;
+      }
+      toast.success('Historia clínica guardada con los datos de la 2ª cita.');
+      navigate(`/historia-clinica/${data.id}`);
+    } else {
+      // HC nueva — crear con todos los datos (incluyendo 2ª cita)
+      if (!form.consent_habeas || !form.consent_med) {
+        toast.error('Completa también los consentimientos de la 1ª cita.');
+        setGuardando(false);
+        return;
+      }
+      const { data, error } = await crearHistoriaClinica(form);
+      if (error || !data) {
+        toast.error('Error al guardar. Verifica la conexion a Supabase.');
+        setGuardando(false);
+        return;
+      }
+      toast.success('Historia clínica guardada con datos de 1ª y 2ª cita.');
+      if (leadId) moveStage(leadId, 'segunda_cita');
+      navigate(`/historia-clinica/${data.id}`);
     }
-    toast.success('Historia clínica actualizada con los datos de la 2ª cita.');
-    navigate(`/historia-clinica/${data.id}`);
   }
 
   const SECTION_STYLE: React.CSSProperties = {
@@ -234,8 +253,8 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
           <S11b_Consentimiento2 form={form} set={set as (k: keyof HCForm, v: boolean) => void} />
         </div>
 
-        {/* Botón actualizar 2ª Cita */}
-        {!readOnly && esActualizacion && (
+        {/* Botón guardar 2ª Cita — visible siempre en modo edición */}
+        {!readOnly && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '4px', paddingBottom: '4px' }}>
             <button type="button" onClick={() => navigate(-1)} style={{
               padding: '12px 24px', borderRadius: '10px',
@@ -244,9 +263,9 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
             }}>
               Cancelar
             </button>
-            <button type="button" onClick={handleActualizarSegundaCita} disabled={guardando}
+            <button type="button" onClick={handleGuardarSegundaCita} disabled={guardando}
               style={{ ...CONSENT_BTN, background: guardando ? '#9CA3AF' : '#D97706', boxShadow: guardando ? 'none' : '0 4px 18px rgba(217,119,6,0.35)' }}>
-              {guardando ? <><Spinner /> Actualizando...</> : '✦ Actualizar Historia Clínica — 2ª Cita'}
+              {guardando ? <><Spinner /> Guardando...</> : '✦ Guardar Historia Clínica — 2ª Cita'}
             </button>
           </div>
         )}
