@@ -679,12 +679,210 @@ function TabHistorial() {
   )
 }
 
+// ─── Tab Seguimiento Clínico — panel del lead ─────────────────────────────────
+function TabSeguimientoPanel({ lead }: { lead: Lead }) {
+  const { updateLead } = useLeads()
+  const isActivo = lead.stage === 'activo' || lead.stage === 'renovacion'
+  const isS1 = lead.plan === 'S1'
+  const seguimiento = lead.seguimiento ?? []
+
+  function getSemana(n: number): import('../context/LeadsContext').SeguimientoSemanal {
+    return seguimiento.find(s => s.semana === n) ?? { semana: n }
+  }
+
+  function updateSemana(n: number, patch: Partial<import('../context/LeadsContext').SeguimientoSemanal>) {
+    const prev = seguimiento.filter(s => s.semana !== n)
+    updateLead(lead.id, { seguimiento: [...prev, { ...getSemana(n), ...patch }] })
+  }
+
+  if (!isActivo) {
+    return (
+      <div className="flex flex-col items-center justify-center" style={{ minHeight: '200px', gap: '12px' }}>
+        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Activity size={22} color="#9CA3AF" />
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: '#374151', margin: '0 0 4px' }}>Seguimiento no activo</p>
+          <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0 }}>
+            Se activa automáticamente cuando confirmes el pago en la pestaña <strong>Pagos & Plan</strong>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const semanas = Array.from({ length: 12 }, (_, i) => i + 1)
+  const completadas = seguimiento.filter(s => s.peso || s.fecha).length
+  const esControl = (n: number) => [4, 8, 12].includes(n)
+  const SINT_OPTS = ['Náuseas', 'Estreñimiento', 'Fatiga', 'Acidez', 'Mareo', 'Sin síntomas']
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {/* Progreso */}
+      <div style={{ background: '#F0FDF4', border: '1px solid #6EE7B7', borderRadius: '10px', padding: '10px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: '#15803D' }}>Progreso del programa</span>
+          <span style={{ fontSize: '11px', color: '#6B7280' }}>{completadas}/12 semanas</span>
+        </div>
+        <div style={{ height: '6px', background: '#DCFCE7', borderRadius: '3px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${(completadas / 12) * 100}%`, background: '#16A34A', borderRadius: '3px', transition: 'width 0.3s' }} />
+        </div>
+      </div>
+
+      {/* Grid 12 semanas */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+        {semanas.map(n => {
+          const sem = getSemana(n)
+          const ok  = !!(sem.peso || sem.fecha)
+          const ctrl = esControl(n)
+          const [open, setOpen] = useState(false)
+
+          return (
+            <div key={n} style={{ border: `1.5px solid ${ctrl ? '#D4AF37' : ok ? '#6EE7B7' : '#E5E7EB'}`, borderRadius: '8px', overflow: 'hidden' }}>
+              <button
+                onClick={() => setOpen(p => !p)}
+                style={{ width: '100%', padding: '8px 10px', background: ctrl ? '#FEFCE8' : ok ? '#F0FDF4' : '#F9FAFB', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: ctrl ? '#92400E' : ok ? '#15803D' : '#6B7280' }}>
+                    Sem {n}{ctrl ? ' ⭐' : ''}
+                  </span>
+                  {sem.fecha && <span style={{ fontSize: '10px', color: '#9CA3AF' }}>{sem.fecha}</span>}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {sem.peso && <span style={{ fontSize: '10px', color: '#374151' }}>{sem.peso}kg</span>}
+                  <span style={{ fontSize: '10px', color: ok ? '#16A34A' : '#9CA3AF' }}>{open ? '▲' : '▼'}</span>
+                </div>
+              </button>
+
+              {open && (
+                <div style={{ padding: '10px', background: '#fff', borderTop: '1px solid #F3F4F6', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {/* Fecha y peso */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                    {[
+                      { label: 'Fecha', key: 'fecha' as const, type: 'date' },
+                      { label: 'Peso (kg)', key: 'peso' as const, type: 'text', ph: '___' },
+                      { label: 'Cintura (cm)', key: 'cintura' as const, type: 'text', ph: '___' },
+                      { label: 'PA (mmHg)', key: 'pa' as const, type: 'text', ph: '120/80' },
+                      ...(isS1 ? [
+                        { label: 'Dosis GLP-1', key: 'dosis' as const, type: 'text', ph: '0.5mg' },
+                      ] : []),
+                      { label: 'Días ejercicio', key: 'dias_ejercicio' as const, type: 'text', ph: '0-7' },
+                      { label: 'Vasos agua', key: 'vasos_agua' as const, type: 'text', ph: '0-15' },
+                    ].map(f => (
+                      <div key={f.key}>
+                        <label style={{ fontSize: '9px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '3px' }}>{f.label}</label>
+                        <input
+                          type={f.type}
+                          value={sem[f.key] ?? ''}
+                          onChange={e => updateSemana(n, { [f.key]: e.target.value })}
+                          placeholder={('ph' in f ? f.ph : '') as string}
+                          style={{ width: '100%', height: '28px', borderRadius: '6px', border: '1px solid #E5E7EB', padding: '0 7px', fontSize: '11px', color: '#111827', outline: 'none', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Síntomas */}
+                  <div>
+                    <label style={{ fontSize: '9px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '4px' }}>Síntomas</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {SINT_OPTS.map(s => {
+                        const sel = (sem.sintomas ?? []).includes(s)
+                        return (
+                          <button key={s} type="button" onClick={() => {
+                            const prev = sem.sintomas ?? []
+                            updateSemana(n, { sintomas: sel ? prev.filter(x => x !== s) : [...prev, s] })
+                          }} style={{ padding: '3px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: sel ? 700 : 400, border: sel ? '1.5px solid #12C49A' : '1px solid #E5E7EB', background: sel ? '#E6FAF5' : '#F9FAFB', color: sel ? '#0A3D2E' : '#6B7280', cursor: 'pointer' }}>
+                            {s}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  {/* Adherencia */}
+                  <div>
+                    <label style={{ fontSize: '9px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '4px' }}>Adherencia</label>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {([['excelente','#16A34A','#F0FDF4'],['regular','#D97706','#FEF3C7'],['bajo','#DC2626','#FEE2E2']] as const).map(([v,c,bg]) => (
+                        <button key={v} type="button" onClick={() => updateSemana(n, { adherencia: v })} style={{ flex:1, padding:'5px', borderRadius:'6px', border: sem.adherencia===v ? `2px solid ${c}` : '1px solid #E5E7EB', background: sem.adherencia===v ? bg : '#fff', fontSize:'10px', fontWeight: sem.adherencia===v ? 700:400, color: sem.adherencia===v ? c:'#9CA3AF', cursor:'pointer', textTransform:'capitalize' }}>
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Notas */}
+                  <div>
+                    <label style={{ fontSize: '9px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '3px' }}>Notas</label>
+                    <textarea
+                      value={sem.notas ?? ''}
+                      onChange={e => updateSemana(n, { notas: e.target.value })}
+                      rows={2}
+                      style={{ width: '100%', borderRadius: '6px', border: '1px solid #E5E7EB', padding: '5px 7px', fontSize: '11px', color: '#111827', resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  {/* Bloque control médico */}
+                  {ctrl && (
+                    <div style={{ background: '#FEFCE8', border: '1px solid #D4AF3744', borderRadius: '6px', padding: '8px' }}>
+                      <p style={{ fontSize: '10px', fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>⭐ Control Médico — Sem {n}</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                        {[
+                          { label: '% Grasa', key: 'control_grasa' as const },
+                          { label: 'Kg Masa Magra', key: 'control_magra' as const },
+                          { label: 'Próx. control', key: 'control_prox_fecha' as const },
+                          ...(isS1 ? [{ label: 'Nueva dosis', key: 'control_nueva_dosis' as const }] : []),
+                        ].map(f => (
+                          <div key={f.key}>
+                            <label style={{ fontSize: '9px', fontWeight: 700, color: '#92400E', display: 'block', marginBottom: '2px' }}>{f.label}</label>
+                            <input
+                              value={sem[f.key] ?? ''}
+                              onChange={e => updateSemana(n, { [f.key]: e.target.value })}
+                              style={{ width: '100%', height: '26px', borderRadius: '5px', border: '1px solid #D4AF3766', padding: '0 6px', fontSize: '11px', color: '#111827', outline: 'none', boxSizing: 'border-box', background: '#fff' }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ marginTop: '6px' }}>
+                        <label style={{ fontSize: '9px', fontWeight: 700, color: '#92400E', display: 'block', marginBottom: '2px' }}>Indicaciones médicas</label>
+                        <textarea
+                          value={sem.control_indicaciones ?? ''}
+                          onChange={e => updateSemana(n, { control_indicaciones: e.target.value })}
+                          rows={2}
+                          style={{ width: '100%', borderRadius: '5px', border: '1px solid #D4AF3766', padding: '4px 6px', fontSize: '11px', color: '#111827', resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: '#fff' }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function TabPagos({ lead }: { lead: Lead }) {
+  const { moveStage, updateLead } = useLeads()
+  const [confirming, setConfirming] = useState(false)
+
   const plans = {
     S1: { name: 'Plan S1 — Control Metabólico', price: 500_000, period: 'Trimestral' },
     S2: { name: 'Plan S2 — Bienestar Integral',  price: 250_000, period: 'Trimestral' },
   }
   const plan = lead.plan ? plans[lead.plan] : null
+
+  function handleConfirmarPago() {
+    const hoy = new Date().toISOString().split('T')[0]
+    updateLead(lead.id, { pago_confirmado: true, plan_inicio: hoy })
+    moveStage(lead.id, 'activo')
+    setConfirming(false)
+  }
+
+  const pendienteInicio = lead.stage === 'pendiente_inicio'
+  const pagoConfirmado  = lead.pago_confirmado || lead.stage === 'activo' ||
+                          lead.stage === 'renovacion' || lead.stage === 'no_renueva'
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -705,6 +903,11 @@ function TabPagos({ lead }: { lead: Lead }) {
               <span className="text-sm font-normal text-white/60 ml-1">COP</span>
             </p>
             <p className="text-[10px] text-white/50 mt-0.5">{plan.period}</p>
+            {lead.plan_inicio && (
+              <p className="text-[10px] text-emerald-300 mt-1">
+                ✓ Inicio: {new Date(lead.plan_inicio + 'T12:00:00').toLocaleDateString('es-CO', { day:'numeric', month:'long', year:'numeric' })}
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -714,7 +917,12 @@ function TabPagos({ lead }: { lead: Lead }) {
         <div className="flex flex-col gap-2">
           {[
             { label: 'Consulta filtro', amount: '$70.000', status: 'Pagado', ok: true },
-            { label: plan ? plan.name : 'Plan', amount: plan ? `$${plan.price.toLocaleString('es-CO')}` : '—', status: lead.plan ? 'Pagado' : 'Pendiente', ok: !!lead.plan },
+            {
+              label: plan ? plan.name : 'Plan',
+              amount: plan ? `$${plan.price.toLocaleString('es-CO')}` : '—',
+              status: pagoConfirmado ? 'Confirmado' : (pendienteInicio ? 'Pendiente confirmación' : 'Pendiente'),
+              ok: pagoConfirmado,
+            },
           ].map(({ label, amount, status, ok }) => (
             <div key={label} className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100">
               <div>
@@ -728,6 +936,66 @@ function TabPagos({ lead }: { lead: Lead }) {
           ))}
         </div>
       </div>
+
+      {/* ── Confirmar Pago — solo visible cuando stage = pendiente_inicio ── */}
+      {pendienteInicio && !pagoConfirmado && (
+        <div style={{ border: '1.5px solid #CA8A04', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ background: '#FEFCE8', padding: '12px 14px', borderBottom: '1px solid #CA8A0430' }}>
+            <p style={{ fontSize: '11px', fontWeight: 800, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
+              ⏳ Confirmación de Pago Pendiente
+            </p>
+            <p style={{ fontSize: '11px', color: '#6B7280', margin: '4px 0 0' }}>
+              Una vez confirmes el pago, el paciente pasa a <strong>Activo</strong> y el Seguimiento se activa automáticamente.
+            </p>
+          </div>
+          <div style={{ padding: '12px 14px', background: '#fff' }}>
+            {!confirming ? (
+              <button
+                onClick={() => setConfirming(true)}
+                style={{
+                  width: '100%', padding: '10px', borderRadius: '8px',
+                  background: '#16A34A', border: 'none',
+                  fontSize: '13px', fontWeight: 700, color: '#fff',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: '6px',
+                }}
+              >
+                <CheckCircle2 size={14} /> Confirmar Pago del Programa
+              </button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <p style={{ fontSize: '12px', color: '#374151', textAlign: 'center', margin: 0 }}>
+                  ¿Confirmas que el paciente realizó el pago?
+                </p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setConfirming(false)}
+                    style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#fff', fontSize: '12px', fontWeight: 600, color: '#6B7280', cursor: 'pointer' }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleConfirmarPago}
+                    style={{ flex: 1, padding: '8px', borderRadius: '8px', background: '#16A34A', border: 'none', fontSize: '12px', fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+                  >
+                    ✓ Sí, confirmar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {pagoConfirmado && (
+        <div style={{ background: '#F0FDF4', border: '1px solid #6EE7B7', borderRadius: '10px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <CheckCircle2 size={16} color="#16A34A" />
+          <div>
+            <p style={{ fontSize: '12px', fontWeight: 700, color: '#15803D', margin: 0 }}>Pago confirmado — Paciente Activo</p>
+            {lead.plan_inicio && <p style={{ fontSize: '11px', color: '#6B7280', margin: '2px 0 0' }}>Programa iniciado el {new Date(lead.plan_inicio + 'T12:00:00').toLocaleDateString('es-CO', { day:'numeric', month:'long' })}</p>}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -754,7 +1022,7 @@ function LeadPanel({
       case 'soportes':    return <TabSoportes lead={lead} />
       case 'emails':      return <TabPlaceholder label="Emails" icon={<Mail size={20} />} />
       case 'historial':   return <TabHistorial />
-      case 'seguimiento': return <TabPlaceholder label="Seguimiento Clínico" icon={<Activity size={20} />} />
+      case 'seguimiento': return <TabSeguimientoPanel lead={lead} />
       case 'pagos':       return <TabPagos lead={lead} />
     }
   }

@@ -133,6 +133,7 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
         return;
       }
       toast.success('Historia clínica guardada con los datos de la 2ª cita.');
+      if (leadId) moveStage(leadId, 'pendiente_inicio');
       navigate(`/historia-clinica/${data.id}`);
     } else {
       // HC nueva — crear con todos los datos (incluyendo 2ª cita)
@@ -148,7 +149,7 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
         return;
       }
       toast.success('Historia clínica guardada con datos de 1ª y 2ª cita.');
-      if (leadId) moveStage(leadId, 'segunda_cita');
+      if (leadId) moveStage(leadId, 'pendiente_inicio');
       navigate(`/historia-clinica/${data.id}`);
     }
   }

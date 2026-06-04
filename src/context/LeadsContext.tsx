@@ -7,6 +7,27 @@ export type StageId =
   | 'paraclínicos' | 'segunda_cita' | 'pendiente_inicio'
   | 'activo' | 'renovacion' | 'no_renueva'
 
+export interface SeguimientoSemanal {
+  semana:              number    // 1–12
+  fecha?:              string
+  peso?:               string
+  cintura?:            string
+  pa?:                 string
+  dosis?:              string    // S1
+  sitio_inyeccion?:    string    // S1
+  dias_ejercicio?:     string
+  vasos_agua?:         string
+  sintomas?:           string[]
+  adherencia?:         'excelente' | 'regular' | 'bajo'
+  notas?:              string
+  // Control médico (semanas 4, 8, 12)
+  control_grasa?:      string
+  control_magra?:      string
+  control_nueva_dosis?:string
+  control_prox_fecha?: string
+  control_indicaciones?:string
+}
+
 export interface Lead {
   id: string
   name: string
@@ -25,6 +46,11 @@ export interface Lead {
   objetivo?: string
   condicion?: string
   fuente?: string
+  // Gestión de pago e inicio de programa
+  pago_confirmado?: boolean
+  plan_inicio?:     string    // fecha ISO 'YYYY-MM-DD'
+  // Seguimiento semanal (12 semanas)
+  seguimiento?:     SeguimientoSemanal[]
 }
 
 // ─── Datos iniciales (mock) ───────────────────────────────────────────────────
