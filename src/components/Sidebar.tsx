@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Stethoscope,
 } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 const NAV_ITEMS = [
   { to: '/dashboard',    icon: LayoutDashboard, label: 'KPIs' },
@@ -62,10 +63,19 @@ function Clock() {
 
 export default function Sidebar() {
   const navigate = useNavigate()
+  const { currentUser, logout } = useAuth()
 
-  function handleLogout() {
+  async function handleLogout() {
+    await logout()
     navigate('/login')
   }
+
+  const initials = (currentUser?.name ?? 'U')
+    .split(' ')
+    .slice(0, 2)
+    .map(p => p[0])
+    .join('')
+    .toUpperCase()
 
   return (
     <aside className="flex flex-col h-screen w-[240px] min-w-[240px] bg-[#3A3A3A] select-none" style={{ paddingLeft: '10px' }}>
@@ -123,17 +133,21 @@ export default function Sidebar() {
         {/* Avatar */}
         <div className="flex items-center gap-3 pr-4 py-3 border-t border-white/8" style={{ paddingLeft: '6px' }}>
           <div className="w-9 h-9 rounded-full bg-[#12C49A]/20 border border-[#12C49A]/40 flex items-center justify-center flex-shrink-0">
-            <span className="text-[#12C49A] text-[13px] font-bold">CS</span>
+            <span className="text-[#12C49A] text-[13px] font-bold">{initials}</span>
           </div>
           <div className="min-w-0">
-            <p className="text-white text-[13px] font-semibold truncate leading-tight">Carlos Suárez</p>
-            <p className="text-white/40 text-[11px] truncate mt-0.5">Superadmin</p>
+            <p className="text-white text-[13px] font-semibold truncate leading-tight">
+              {currentUser?.name ?? 'Usuario'}
+            </p>
+            <p className="text-white/40 text-[11px] truncate mt-0.5">
+              {currentUser?.role === 'admin' ? 'Superadmin' : 'Asistente'}
+            </p>
           </div>
           <div className="ml-auto w-2 h-2 rounded-full bg-[#12C49A] flex-shrink-0" title="Sesión activa" />
         </div>
 
         {/* Cerrar sesión */}
-        <div className="pr-3 pt-4 border-t border-white/8" style={{ paddingLeft: '2px', paddingBottom: '48px' }}>
+        <div className="pr-3 pt-2 border-t border-white/8" style={{ paddingLeft: '2px' }}>
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-[13px] font-medium text-white/45 hover:bg-red-500/12 hover:text-red-400 transition-all duration-150 group"
@@ -141,6 +155,14 @@ export default function Sidebar() {
             <LogOut size={16} className="flex-shrink-0 transition-colors group-hover:text-red-400" />
             <span>Cerrar sesión</span>
           </button>
+        </div>
+
+        {/* Firma CAST */}
+        <div className="text-center pb-4" style={{ paddingTop: '6px' }}>
+          <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.22)', lineHeight: '1.5', userSelect: 'none' }}>
+            By CAST Consultorías<br />
+            Todos los Derechos Reservados
+          </p>
         </div>
 
       </div>

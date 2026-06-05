@@ -80,7 +80,7 @@ Deno.serve(async (req: Request) => {
   } catch (err) {
     console.error('cal-webhook error:', err)
     return new Response(
-      JSON.stringify({ error: String(err) }),
+      JSON.stringify({ error: 'internal_error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }

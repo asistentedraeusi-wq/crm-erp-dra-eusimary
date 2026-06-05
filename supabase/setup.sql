@@ -43,7 +43,7 @@ GRANT EXECUTE ON FUNCTION public.crm_get_leads() TO anon;
 
 -- PASO 2: Agregar secrets en Supabase Dashboard
 --   → Edge Functions → notify-lead → Secrets → Add secret
---   BREVO_API_KEY  = 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
+--   BREVO_API_KEY  = <TU_BREVO_API_KEY>   ← NUNCA escribir la clave real en este archivo (está en git)
 --   BREVO_LIST_ID  = 2
 
 -- PASO 3: Crear el Database Webhook en Supabase Dashboard

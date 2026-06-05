@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Lock, User, Volume2, VolumeX } from 'lucide-react'
 import logo from '../assets/logo.png'
 import heroBg from '../assets/Video LoginPag.mp4'
+import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [form, setForm] = useState({ username: '', password: '' })
   const [loading, setLoading] = useState(false)
@@ -27,17 +29,20 @@ export default function LoginPage() {
     setError('')
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.username || !form.password) {
       setError('Por favor ingresa tu usuario y contraseña.')
       return
     }
     setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
+    const { error: loginError } = await login(form.username.trim(), form.password)
+    setLoading(false)
+    if (loginError) {
+      setError(loginError)
+    } else {
       navigate('/dashboard')
-    }, 1200)
+    }
   }
 
   const inputWrapperClass =

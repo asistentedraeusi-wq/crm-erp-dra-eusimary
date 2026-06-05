@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Netlify — build, SPA routing y cabeceras de seguridad
+# CRM-ERP Dra. Eusimary Contreras
+# ─────────────────────────────────────────────────────────────────────────────
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback: todas las rutas las resuelve React Router
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# ── Cabeceras de seguridad (aplican a todo el sitio) ─────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Evita que el sitio sea embebido en iframes de terceros (clickjacking)
+    X-Frame-Options = "DENY"
+    # Bloquea sniffing del Content-Type
+    X-Content-Type-Options = "nosniff"
+    # No filtrar la URL completa al navegar a sitios externos
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Desactiva APIs sensibles del navegador que la app no usa
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    # Fuerza HTTPS durante 2 años, incluyendo subdominios
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    # Aísla el contexto de navegación
+    Cross-Origin-Opener-Policy = "same-origin"
+    # Content Security Policy
+    #   - connect-src incluye Supabase (REST + Realtime WSS)
+    #   - frame-ancestors 'none' refuerza X-Frame-Options
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+
+# Cache largo para los assets con hash de Vite
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

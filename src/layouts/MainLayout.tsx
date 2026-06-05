@@ -6,6 +6,7 @@ import HistoriaClinicaPage from '../pages/HistoriaClinicaPage'
 import OrdenesPage from '../pages/OrdenesPage'
 import SeguimientoPage from '../pages/SeguimientoPage'
 import PlaceholderPage from '../pages/PlaceholderPage'
+import ConfigPage from '../pages/ConfigPage'
 
 export default function MainLayout() {
   return (
@@ -19,11 +20,11 @@ export default function MainLayout() {
           <Route path="historia-clinica"       element={<Navigate to="historia-clinica/nueva" replace />} />
           <Route path="citas"                  element={<Navigate to="/blueprints" replace />} />
           <Route path="blueprints"             element={<HistoriaClinicaPage />} />
-          <Route path="ordenes"                 element={<OrdenesPage />} />
+          <Route path="ordenes"                element={<OrdenesPage />} />
           <Route path="seguimientos"           element={<SeguimientoPage />} />
           <Route path="leads"                  element={<PlaceholderPage title="Base de Leads" />} />
           <Route path="chat"                   element={<PlaceholderPage title="Chat & Redes Sociales" />} />
-          <Route path="config"                 element={<PlaceholderPage title="Configuración" />} />
+          <Route path="config"                 element={<ConfigPage />} />
           <Route path="*"                      element={<Navigate to="dashboard" replace />} />
         </Routes>
       </main>
