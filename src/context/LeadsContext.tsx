@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
+import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -74,7 +75,26 @@ const INITIAL_LEADS: Lead[] = [
   { id: 'L015', name: 'Patricia Soto',    phone: '+57 302 8901234', email: 'psoto@gmail.com',      age: 47, city: 'Barranquilla', stage: 'no_renueva',       date: '2026-01-15', tags: ['No contactable'],  source: 'Instagram' },
 ]
 
-const STORAGE_KEY = 'crm_eusimary_leads_v1'
+const STORAGE_KEY     = 'crm_eusimary_leads_v1'
+const CAL_PROC_KEY    = 'crm_cal_processed_v1'
+
+// Orden de etapas — solo avanzamos, nunca retrocedemos por webhook de Cal.com
+const STAGE_ORDER: StageId[] = [
+  'nuevo', 'contactado', 'cita_agendada', 'cita_blueprint',
+  'paraclínicos', 'segunda_cita', 'pendiente_inicio',
+  'activo', 'renovacion', 'no_renueva',
+]
+
+function getProcessedCal(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(CAL_PROC_KEY) ?? '[]')) }
+  catch { return new Set() }
+}
+
+function markProcessedCal(id: string) {
+  const s = getProcessedCal()
+  s.add(id)
+  localStorage.setItem(CAL_PROC_KEY, JSON.stringify([...s]))
+}
 
 function loadLeads(): Lead[] {
   try {
@@ -106,6 +126,68 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(leads))
   }, [leads])
+
+  // Ref siempre actualizado — necesario para leer el estado actual
+  // desde dentro de callbacks de Realtime sin re-suscribirse cada render
+  const leadsRef = useRef(leads)
+  useEffect(() => { leadsRef.current = leads }, [leads])
+
+  // ─── Cal.com Realtime ───────────────────────────────────────────────────────
+  // Cuando el paciente agenda en Cal.com → webhook → cal_bookings → aquí
+  // Se procesa tanto on-mount (bookings pendientes) como en tiempo real
+  useEffect(() => {
+    if (!supabase) return
+
+    type CalRow = { id: string; email: string; event_slug: string; nombre: string }
+
+    function handleBooking(b: CalRow) {
+      if (getProcessedCal().has(b.id)) return
+
+      const targetStage: StageId =
+        b.event_slug === 'segunda_cita' ? 'segunda_cita' : 'cita_agendada'
+
+      const lead = leadsRef.current.find(
+        l => l.email.toLowerCase().trim() === b.email.toLowerCase().trim()
+      )
+
+      if (lead) {
+        const ci = STAGE_ORDER.indexOf(lead.stage)
+        const ti = STAGE_ORDER.indexOf(targetStage)
+        if (ti > ci) {
+          // setLeads funcional — seguro desde closure estático (setLeads es estable)
+          setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, stage: targetStage } : l))
+          toast.success(
+            targetStage === 'segunda_cita'
+              ? `📅 ${b.nombre || lead.name} agendó 2ª Cita → 06 · 2da Cita Médica`
+              : `📅 ${b.nombre || lead.name} agendó Cita → 03 · Cita Agendada`
+          )
+        }
+      } else {
+        console.warn(`cal-booking: sin lead para ${b.email}`)
+      }
+
+      markProcessedCal(b.id)
+    }
+
+    // 1. Procesar bookings pendientes que llegaron cuando el CRM estaba cerrado
+    supabase
+      .from('cal_bookings')
+      .select('id, email, event_slug, nombre')
+      .order('created_at', { ascending: true })
+      .then(({ data }) => { data?.forEach(b => handleBooking(b as CalRow)) })
+
+    // 2. Suscripción Realtime: nuevos bookings mientras el CRM está abierto
+    const channel = supabase
+      .channel('cal-bookings-realtime')
+      .on(
+        'postgres_changes' as const,
+        { event: 'INSERT', schema: 'public', table: 'cal_bookings' },
+        payload => handleBooking(payload.new as CalRow)
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function moveStage(id: string, stage: StageId) {
     setLeads(prev => {
