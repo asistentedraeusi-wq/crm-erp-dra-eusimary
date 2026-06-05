@@ -175,7 +175,7 @@ export default function OrdenesPage() {
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={LABEL}>Programa clínico</label>
                   <select style={SELECT} value={form.programa}
-                    onChange={e => set('programa', e.target.value)}>
+                    onChange={e => set('programa', e.target.value as HistoriaClinicaForm['programa'])}>
                     <option value="">Seleccionar programa...</option>
                     {PROGRAMAS.map(p => (
                       <option key={p.value} value={p.value}>{p.label}</option>

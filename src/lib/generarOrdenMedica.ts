@@ -41,7 +41,7 @@ export function buildOrdenMedicaHTML(form: HistoriaClinicaForm, logoUrl: string)
   type ExamItem = { id: string; label: string };
   const exams: ExamItem[] = form.examenes
     .map(id => EXAMENES_PARACLÍNICOS.find(e => e.id === id))
-    .filter((e): e is ExamItem => Boolean(e));
+    .filter(Boolean) as ExamItem[];
 
   const fecha          = fechaColombia(new Date());
   const programaBanner = getProgramaBanner(form.programa);

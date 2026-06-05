@@ -30,7 +30,6 @@ function val(v: string | number | undefined | null, fallback = '—'): string {
 }
 
 function esS1(p: string) { return p === 'control_metabolico'; }
-function esS2(p: string) { return p === 'bienestar_integral'; }
 
 function nombre1(form: HistoriaClinicaForm) {
   return val(form.nombres).split(' ')[0];
@@ -436,7 +435,7 @@ function buildPlanEjercicios(form: HistoriaClinicaForm): string {
           const isFuerza = diasFuerzaShort.includes(d);
           const isCardio = !isFuerza;
           const bg = isFuerza ? C.tealLight : (isCardio ? '#EFF6FF' : C.gray50);
-          const color = isFuerza ? '#0A3D2E' : (isCardio ? '#1D4ED8' : C.gray400);
+          const color = isFuerza ? '#0A3D2E' : (isCardio ? '#1D4ED8' : C.gray500);
           const label = isFuerza ? '💪' : '🚶';
           return `
             <div style="text-align:center;border:1px solid ${isFuerza ? C.teal+'55' : '#BFDBFE'};border-radius:8px;padding:8px 4px;background:${bg};">
@@ -627,7 +626,7 @@ function buildHojaSemanal(semana: number, form: HistoriaClinicaForm): string {
       <span style="font-size:11px;font-weight:700;color:${C.gray500};text-transform:uppercase;letter-spacing:0.06em;">${label}</span>
       <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
         <div style="flex:1;height:1px;border-bottom:1.5px solid ${C.gray200};"></div>
-        ${unit ? `<span style="font-size:11px;color:${C.gray400};">${unit}</span>` : ''}
+        ${unit ? `<span style="font-size:11px;color:${C.gray500};">${unit}</span>` : ''}
       </div>
     </div>`;
 

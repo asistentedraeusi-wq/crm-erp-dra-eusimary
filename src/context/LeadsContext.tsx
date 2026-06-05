@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
 
@@ -120,7 +120,8 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   // Cuando el paciente agenda en Cal.com → webhook → cal_bookings → aquí
   // Se procesa tanto on-mount (bookings pendientes) como en tiempo real
   useEffect(() => {
-    if (!supabase) return
+    const sb = supabase
+    if (!sb) return
 
     type CalRow = { id: string; email: string; event_slug: string; nombre: string }
 
@@ -154,14 +155,13 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     }
 
     // 1. Procesar bookings pendientes que llegaron cuando el CRM estaba cerrado
-    supabase
-      .from('cal_bookings')
+    sb.from('cal_bookings')
       .select('id, email, event_slug, nombre')
       .order('created_at', { ascending: true })
       .then(({ data }) => { data?.forEach(b => handleBooking(b as CalRow)) })
 
     // 2. Suscripción Realtime: nuevos bookings mientras el CRM está abierto
-    const channel = supabase
+    const channel = sb
       .channel('cal-bookings-realtime')
       .on(
         'postgres_changes' as const,
@@ -170,7 +170,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => { sb.removeChannel(channel) }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function moveStage(id: string, stage: StageId) {

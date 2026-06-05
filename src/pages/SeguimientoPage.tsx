@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Activity, ChevronRight, User, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
+import { Activity, ChevronRight, User } from 'lucide-react'
 import { useLeads, type Lead, type SeguimientoSemanal } from '../context/LeadsContext'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
