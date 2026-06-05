@@ -36,7 +36,8 @@ function getProgramaCorto(val: string): string {
   return m[val] || val || '—';
 }
 
-export function generarOrdenMedica(form: HistoriaClinicaForm): void {
+// Construye el HTML de la Orden Médica. logoUrl permite usar una URL pública para email.
+export function buildOrdenMedicaHTML(form: HistoriaClinicaForm, logoUrl: string): string {
   type ExamItem = { id: string; label: string };
   const exams: ExamItem[] = form.examenes
     .map(id => EXAMENES_PARACLÍNICOS.find(e => e.id === id))
@@ -45,7 +46,6 @@ export function generarOrdenMedica(form: HistoriaClinicaForm): void {
   const fecha          = fechaColombia(new Date());
   const programaBanner = getProgramaBanner(form.programa);
   const programaCorto  = getProgramaCorto(form.programa);
-  const logoUrl        = `${window.location.origin}/logo-dra-eusimary.jpg`;
 
   const instrDefault = [
     'Muestras en ayuno mínimo <strong>12 horas</strong> antes de la toma.',
@@ -258,7 +258,13 @@ export function generarOrdenMedica(form: HistoriaClinicaForm): void {
 </body>
 </html>`;
 
-  const win = window.open('', '_blank', 'width=880,height=960');
+  return html;
+}
+
+export function generarOrdenMedica(form: HistoriaClinicaForm): void {
+  const logoUrl = `${window.location.origin}/logo-dra-eusimary.jpg`;
+  const html    = buildOrdenMedicaHTML(form, logoUrl);
+  const win     = window.open('', '_blank', 'width=880,height=960');
   if (win) {
     win.document.write(html);
     win.document.close();

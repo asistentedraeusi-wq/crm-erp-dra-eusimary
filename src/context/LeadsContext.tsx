@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { supabase } from '../lib/supabase'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -107,7 +108,24 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   }, [leads])
 
   function moveStage(id: string, stage: StageId) {
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, stage } : l))
+    setLeads(prev => {
+      const updated = prev.map(l => l.id === id ? { ...l, stage } : l)
+
+      // Cuando llega a Paraclínicos → recordatorio 48h al paciente + notificación a la Dra.
+      // Se dispara desde HC (guardar Cita 1) y desde el Pipeline (mover manual)
+      if (stage === 'paraclínicos' && supabase) {
+        const lead = updated.find(l => l.id === id)
+        if (lead?.email) {
+          const payload = { email: lead.email, nombre: lead.name, celular: lead.phone }
+          supabase.functions.invoke('notify-paraclinicos', { body: payload })
+            .catch((err: unknown) => console.warn('notify-paraclinicos:', err))
+          supabase.functions.invoke('notify-doctor', { body: payload })
+            .catch((err: unknown) => console.warn('notify-doctor:', err))
+        }
+      }
+
+      return updated
+    })
   }
 
   function addLead(stageId: StageId): Lead {

@@ -1225,7 +1225,7 @@ function LeadPanel({
 
 // ─── Import Modal ─────────────────────────────────────────────────────────────
 
-import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { isSupabaseConfigured } from '../lib/supabase'
 import { fetchLeadsFromSupabase } from '../lib/importLeads'
 
 type ImportStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -1498,18 +1498,6 @@ export default function PipelinePage() {
 
   function handleMoveStage(id: string, stage: StageId) {
     moveStage(id, stage)
-
-    // Cuando llega a Paraclínicos → recordatorio 48h al paciente + notificación a la Dra.
-    if (stage === 'paraclínicos' && supabase) {
-      const lead = leads.find(l => l.id === id)
-      if (lead?.email) {
-        const payload = { email: lead.email, nombre: lead.name, celular: lead.phone }
-        supabase.functions.invoke('notify-paraclinicos', { body: payload })
-          .catch((err: unknown) => console.warn('notify-paraclinicos:', err))
-        supabase.functions.invoke('notify-doctor', { body: payload })
-          .catch((err: unknown) => console.warn('notify-doctor:', err))
-      }
-    }
   }
 
   function handleAddLead(stageId: StageId) {

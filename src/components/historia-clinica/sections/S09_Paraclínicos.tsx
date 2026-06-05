@@ -3,7 +3,8 @@ import { toast } from 'sonner';
 import type { HistoriaClinicaForm } from '../../../types/historia-clinica';
 import { EXAMENES_PARACLÍNICOS } from '../../../constants/historia-clinica';
 import { useLeads } from '../../../context/LeadsContext';
-import { generarOrdenMedica } from '../../../lib/generarOrdenMedica';
+import { supabase } from '../../../lib/supabase';
+import { generarOrdenMedica, buildOrdenMedicaHTML } from '../../../lib/generarOrdenMedica';
 import SectionHeader from '../ui/SectionHeader';
 import FormField from '../ui/FormField';
 
@@ -21,7 +22,7 @@ interface Props {
 }
 
 export default function S09_Paraclínicos({ form, set, leadId }: Props) {
-  const { moveStage } = useLeads();
+  const { leads, moveStage } = useLeads();
 
   function toggleExam(id: string) {
     set('examenes',
@@ -33,9 +34,25 @@ export default function S09_Paraclínicos({ form, set, leadId }: Props) {
 
   function handleGenerarOrden() {
     generarOrdenMedica(form);
+
     if (leadId) {
       moveStage(leadId, 'paraclínicos');
-      toast.success('Lead movido a 05 · Paraclínicos — esperando resultados');
+      toast.success('Orden generada · Lead movido a 05 · Paraclínicos');
+
+      // Envío automático al email del paciente — misma Orden Médica normativa
+      if (supabase) {
+        const lead = leads.find(l => l.id === leadId);
+        if (lead?.email) {
+          const nombre      = [form.nombres, form.apellidos].filter(Boolean).join(' ') || lead.name;
+          // Logo con URL pública para que se vea en el cliente de correo
+          const logoUrl     = 'https://draeusimary.netlify.app/logo-dra-eusimary.jpg';
+          const htmlContent = buildOrdenMedicaHTML(form, logoUrl)
+            .replace('<script>window.onload = function(){ window.print(); }</script>', '');
+          supabase.functions.invoke('notify-orden-medica', {
+            body: { email: lead.email, nombre, htmlContent },
+          }).catch((err: unknown) => console.warn('notify-orden-medica:', err));
+        }
+      }
     }
   }
 
@@ -122,7 +139,7 @@ export default function S09_Paraclínicos({ form, set, leadId }: Props) {
           </p>
           <p style={{ fontSize: '11px', color: tieneExamenes ? '#374151' : '#D1D5DB', margin: '2px 0 0' }}>
             {tieneExamenes
-              ? `${form.examenes.length} examen(es) · PDF + mover lead a 05 · Paraclínicos`
+              ? `${form.examenes.length} examen(es) · PDF + email automático al paciente`
               : 'Selecciona al menos un examen para generar la orden'}
           </p>
         </div>
