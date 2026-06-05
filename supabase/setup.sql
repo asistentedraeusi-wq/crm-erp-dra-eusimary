@@ -56,3 +56,31 @@ GRANT EXECUTE ON FUNCTION public.crm_get_leads() TO anon;
 --   → Save
 
 -- Con esto: INSERT en leads → webhook → Edge Function → Brevo lista 2 → 7 emails automáticos
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- INTEGRACIÓN PARACLÍNICOS — Edge Function notify-paraclinicos
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PASO 1: Crear lista en Brevo Dashboard
+--   → Contactos → Listas → Crear lista: "Paraclínicos-Recordatorio" (anota el ID)
+
+-- PASO 2: Agregar secret en Supabase Dashboard
+--   → Edge Functions → Secrets → Add secret
+--   BREVO_PARACLINICOS_LIST_ID  = <ID de la lista creada en Brevo>
+--   (BREVO_API_KEY ya existe, no hay que volver a agregarlo)
+
+-- PASO 3: Subir Edge Function notify-paraclinicos
+--   → Edge Functions → "New function" → nombre: notify-paraclinicos
+--   → Pegar el contenido de supabase/functions/notify-paraclinicos/index.ts
+--   → Activar "Disable JWT Verification"
+--   → Deploy
+
+-- PASO 4: Crear automatización en Brevo
+--   → Automatizaciones → Nueva automatización
+--   → Disparador: "Contacto añadido a una lista" → Paraclínicos-Recordatorio
+--   → Acción 1: Esperar 48 horas
+--   → Acción 2: Enviar email — asunto: "Recuerda realizarte tus exámenes"
+--   → Guardar y activar
+
+-- Con esto: lead llega a columna 05 · Paraclínicos en el CRM →
+--   CRM llama Edge Function → Brevo lista Paraclínicos-Recordatorio →
+--   automatización espera 48h → envía recordatorio de exámenes al paciente

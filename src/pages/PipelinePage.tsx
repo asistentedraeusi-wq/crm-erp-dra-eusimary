@@ -11,6 +11,9 @@ import {
 import { useLeads, type Lead, type StageId } from '../context/LeadsContext'
 import { listarSoportes, eliminarSoporte, TIPO_LABELS, TIPO_COLORS, type Soporte } from '../lib/soportes'
 
+// ─── Cal.com — actualizar con la URL real del evento "Segunda Cita Médica" ───
+const CAL_SEGUNDA_CITA_URL = 'https://cal.com/eusi-contreras-morales-hfytax/segunda-cita-medica'
+
 // ─── Stages config ───────────────────────────────────────────────────────────
 
 const STAGES: { id: StageId; label: string; short: string; color: string; bg: string }[] = [
@@ -279,16 +282,16 @@ function TabPerfilActions({ lead }: { lead: Lead }) {
 
   return (
     <div className="flex" style={{ gap: '8px' }}>
-      {/* WhatsApp Web */}
+      {/* WhatsApp — abre chat directo con el paciente */}
       <a
-        href="https://web.whatsapp.com"
+        href={`https://wa.me/${toWhatsAppNumber(lead.phone)}`}
         target="_blank"
         rel="noopener noreferrer"
         className="flex-1 flex items-center justify-center rounded-lg font-semibold transition-all duration-150 hover:opacity-90 active:scale-[0.97]"
         style={{ background: '#25D366', color: '#fff', gap: '6px', padding: '8px 12px', fontSize: '11px', textDecoration: 'none' }}
       >
         <WhatsAppIcon size={13} />
-        WhatsApp Web
+        WhatsApp
       </a>
 
       {/* Copiar email */}
@@ -355,6 +358,41 @@ function TabPerfil({ lead, onMoveStage }: { lead: Lead; onMoveStage: (s: StageId
 
       {/* Acciones rápidas — WhatsApp + Copiar email */}
       <TabPerfilActions lead={lead} />
+
+      {/* 2ª Cita — visible solo en Paraclínicos y 2da Cita */}
+      {(lead.stage === 'paraclínicos' || lead.stage === 'segunda_cita') && (
+        <div>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">2ª Cita Médica</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <a
+              href={CAL_SEGUNDA_CITA_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                padding: '9px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: 700,
+                background: '#0D2244', color: '#fff', textDecoration: 'none',
+              }}
+            >
+              <Calendar size={13} />
+              Agendar 2ª Cita (Cal.com)
+            </a>
+            <a
+              href={`https://wa.me/${toWhatsAppNumber(lead.phone)}?text=${encodeURIComponent(`Hola ${lead.name.split(' ')[0]}, aquí tienes el enlace para agendar tu Segunda Cita Médica con la Dra. Eusimary: ${CAL_SEGUNDA_CITA_URL}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                padding: '9px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: 700,
+                background: '#25D366', color: '#fff', textDecoration: 'none',
+              }}
+            >
+              <WhatsAppIcon size={13} />
+              Enviar link por WhatsApp
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Datos clínicos — Meta, Objetivo, Condición */}
       {(lead.meta || lead.objetivo || lead.condicion) && (
@@ -602,10 +640,10 @@ function TabPlaceholder({ label, icon }: { label: string; icon: React.ReactNode 
 function TabHistoriaClinica({ lead }: { lead: Lead }) {
   const navigate = useNavigate()
 
-  // Divide el nombre en nombres/apellidos (primer espacio = split)
-  const partes      = lead.name.trim().split(' ')
-  const nombres     = partes.slice(0, Math.ceil(partes.length / 2)).join(' ')
-  const apellidos   = partes.slice(Math.ceil(partes.length / 2)).join(' ')
+  const partes    = lead.name.trim().split(' ')
+  const nombres   = partes.slice(0, Math.ceil(partes.length / 2)).join(' ')
+  const apellidos = partes.slice(Math.ceil(partes.length / 2)).join(' ')
+  const esParaclinicos = lead.stage === 'paraclínicos'
 
   function abrirFormulario() {
     navigate('/blueprints', {
@@ -614,13 +652,13 @@ function TabHistoriaClinica({ lead }: { lead: Lead }) {
         leadPrefill: {
           nombres,
           apellidos,
-          telefono:  lead.phone,
-          email:     lead.email,
-          edad:      String(lead.age),
-          ciudad:    lead.city,
-          meta:      lead.meta      ?? '',
-          objetivo:  lead.objetivo  ?? '',
-          condicion: lead.condicion ?? '',
+          telefono:       lead.phone,
+          email:          lead.email,
+          edad:           String(lead.age),
+          ciudad:         lead.city,
+          meta:           lead.meta      ?? '',
+          objetivo:       lead.objetivo  ?? '',
+          condicion:      lead.condicion ?? '',
           fecha_consulta: new Date().toISOString().split('T')[0],
         },
       },
@@ -628,26 +666,58 @@ function TabHistoriaClinica({ lead }: { lead: Lead }) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-48 gap-4 text-center">
-      <div className="w-12 h-12 rounded-2xl bg-[#E6FAF5] flex items-center justify-center">
-        <FileText size={20} className="text-[#12C49A]" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {/* Banner Paraclínicos — esperando resultados de laboratorio */}
+      {esParaclinicos && (
+        <div style={{ border: '1.5px solid #D97706', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ background: '#FFFBEB', padding: '10px 14px', borderBottom: '1px solid #D9770630' }}>
+            <p style={{ fontSize: '11px', fontWeight: 800, color: '#92400E', margin: 0, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              ⏳ Esperando Resultados de Laboratorio
+            </p>
+          </div>
+          <div style={{ padding: '12px 14px', background: '#fff', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <p style={{ fontSize: '11px', color: '#6B7280', margin: 0, lineHeight: '1.5' }}>
+              Cuando el paciente envíe sus resultados, ábrelos en la Historia Clínica y ve a la <strong>Sección 09 — Resultados de Laboratorio</strong>.
+            </p>
+            <button
+              onClick={abrirFormulario}
+              style={{
+                width: '100%', padding: '9px', borderRadius: '8px',
+                background: '#D97706', border: 'none', color: '#fff',
+                fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+              }}
+            >
+              <FileText size={13} /> Abrir HC → Cargar Resultados (Sección 09)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Nueva Historia Clínica */}
+      <div className="flex flex-col items-center justify-center" style={{ minHeight: '160px', gap: '14px', textAlign: 'center' }}>
+        <div className="w-12 h-12 rounded-2xl bg-[#E6FAF5] flex items-center justify-center">
+          <FileText size={20} className="text-[#12C49A]" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-600">Historia Clínica BluePrint</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {esParaclinicos ? 'Crear o continuar documento clínico' : 'Crear el documento clínico para este paciente'}
+          </p>
+        </div>
+        <button
+          onClick={abrirFormulario}
+          style={{
+            background: '#12C49A', color: '#fff', border: 'none',
+            borderRadius: '10px', padding: '10px 24px',
+            fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+            boxShadow: '0 4px 14px rgba(18,196,154,0.35)',
+            display: 'flex', alignItems: 'center', gap: '6px',
+          }}
+        >
+          <FileText size={14} /> {esParaclinicos ? 'Abrir Historia Clínica' : 'Nueva Historia Clínica'}
+        </button>
       </div>
-      <div>
-        <p className="text-sm font-semibold text-gray-600">Historia Clínica BluePrint</p>
-        <p className="text-xs text-gray-400 mt-0.5">Crear el documento clínico para este paciente</p>
-      </div>
-      <button
-        onClick={abrirFormulario}
-        style={{
-          background: '#12C49A', color: '#fff', border: 'none',
-          borderRadius: '10px', padding: '10px 24px',
-          fontSize: '13px', fontWeight: '700', cursor: 'pointer',
-          boxShadow: '0 4px 14px rgba(18,196,154,0.35)',
-          display: 'flex', alignItems: 'center', gap: '6px',
-        }}
-      >
-        <FileText size={14} /> Nueva Historia Clínica
-      </button>
     </div>
   )
 }
@@ -1155,7 +1225,7 @@ function LeadPanel({
 
 // ─── Import Modal ─────────────────────────────────────────────────────────────
 
-import { isSupabaseConfigured } from '../lib/supabase'
+import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { fetchLeadsFromSupabase } from '../lib/importLeads'
 
 type ImportStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -1428,6 +1498,18 @@ export default function PipelinePage() {
 
   function handleMoveStage(id: string, stage: StageId) {
     moveStage(id, stage)
+
+    // Cuando llega a Paraclínicos → recordatorio 48h al paciente + notificación a la Dra.
+    if (stage === 'paraclínicos' && supabase) {
+      const lead = leads.find(l => l.id === id)
+      if (lead?.email) {
+        const payload = { email: lead.email, nombre: lead.name, celular: lead.phone }
+        supabase.functions.invoke('notify-paraclinicos', { body: payload })
+          .catch((err: unknown) => console.warn('notify-paraclinicos:', err))
+        supabase.functions.invoke('notify-doctor', { body: payload })
+          .catch((err: unknown) => console.warn('notify-doctor:', err))
+      }
+    }
   }
 
   function handleAddLead(stageId: StageId) {
