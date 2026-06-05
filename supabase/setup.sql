@@ -31,3 +31,28 @@ $$;
 
 -- 2. Permitir que la clave anon ejecute la función
 GRANT EXECUTE ON FUNCTION public.crm_get_leads() TO anon;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- INTEGRACIÓN BREVO — Edge Function notify-lead
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PASO 1: Subir la Edge Function desde el Dashboard de Supabase
+--   → Edge Functions → "New function" → nombre: notify-lead
+--   → Pegar el contenido de supabase/functions/notify-lead/index.ts
+--   → Activar "Disable JWT Verification" (el webhook no envía JWT)
+--   → Deploy
+
+-- PASO 2: Agregar secrets en Supabase Dashboard
+--   → Edge Functions → notify-lead → Secrets → Add secret
+--   BREVO_API_KEY  = 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
+--   BREVO_LIST_ID  = 2
+
+-- PASO 3: Crear el Database Webhook en Supabase Dashboard
+--   → Database → Webhooks → "Create a new hook"
+--   Nombre:   notify-lead-brevo
+--   Tabla:    public.leads
+--   Evento:   INSERT
+--   Tipo:     Supabase Edge Functions
+--   Function: notify-lead
+--   → Save
+
+-- Con esto: INSERT en leads → webhook → Edge Function → Brevo lista 2 → 7 emails automáticos
