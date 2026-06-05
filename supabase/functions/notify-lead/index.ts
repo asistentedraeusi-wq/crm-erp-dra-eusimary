@@ -20,7 +20,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Solo leads de la guía entran al funnel de Brevo
-    if (record.fuente !== 'guia') {
+    if (record.fuente?.toLowerCase() !== 'guia') {
       return new Response(JSON.stringify({ skipped: 'fuente_no_guia', fuente: record.fuente }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -37,7 +37,6 @@ Deno.serve(async (req: Request) => {
       attributes: {
         FIRSTNAME: firstName,
         LASTNAME: lastName,
-        SMS: record.celular ?? '',
       },
       listIds: [BREVO_LIST_ID],
       updateEnabled: true,   // si ya existe el contacto, lo actualiza y lo agrega a la lista

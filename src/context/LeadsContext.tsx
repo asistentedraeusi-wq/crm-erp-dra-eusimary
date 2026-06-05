@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase'
 export type StageId =
   | 'nuevo' | 'contactado' | 'cita_agendada' | 'cita_blueprint'
   | 'paraclínicos' | 'segunda_cita' | 'pendiente_inicio'
-  | 'activo' | 'renovacion' | 'no_renueva'
+  | 'activo' | 'renovacion' | 'no_renueva' | 'leads_nutrir'
 
 export interface SeguimientoSemanal {
   semana:              number    // 1–12
@@ -110,6 +110,20 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(leads))
   }, [leads])
+
+  // Auto-avance por tiempo para leads de fuente Guia
+  useEffect(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    setLeads(prev => prev.map(lead => {
+      const fuente = (lead.source ?? lead.fuente ?? '').toLowerCase()
+      if (fuente !== 'guia') return lead
+      const leadDate = new Date(lead.date); leadDate.setHours(0, 0, 0, 0)
+      const days = Math.floor((today.getTime() - leadDate.getTime()) / 86_400_000)
+      if (lead.stage === 'nuevo' && days >= 2) return { ...lead, stage: 'contactado' as StageId }
+      if (lead.stage === 'contactado' && days >= 21) return { ...lead, stage: 'leads_nutrir' as StageId }
+      return lead
+    }))
+  }, [])
 
   // Ref siempre actualizado — necesario para leer el estado actual
   // desde dentro de callbacks de Realtime sin re-suscribirse cada render

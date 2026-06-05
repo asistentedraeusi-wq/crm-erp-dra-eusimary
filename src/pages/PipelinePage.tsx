@@ -27,6 +27,7 @@ const STAGES: { id: StageId; label: string; short: string; color: string; bg: st
   { id: 'activo',           label: '08 · Paciente Activo',       short: 'Activo',       color: '#16A34A', bg: '#F0FDF4' },
   { id: 'renovacion',       label: '09 · Renovación / Referido', short: 'Renovación',   color: '#0D2244', bg: '#F0F4FF' },
   { id: 'no_renueva',       label: '10 · No Renueva',            short: 'No Renueva',   color: '#6B7280', bg: '#F9FAFB' },
+  { id: 'leads_nutrir',    label: '11 · Leads en Nutrir',       short: 'En Nutrir',    color: '#9333EA', bg: '#FAF5FF' },
 ]
 
 // ─── TagBadge ─────────────────────────────────────────────────────────────────
