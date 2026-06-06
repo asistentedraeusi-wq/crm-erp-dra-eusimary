@@ -1,7 +1,11 @@
+import { toast } from 'sonner';
 import type { HistoriaClinicaForm } from '../../../types/historia-clinica';
+import { useLeads } from '../../../context/LeadsContext';
+import { supabase } from '../../../lib/supabase';
+import { generarFormulaMedica, buildFormulaMedicaHTML } from '../../../lib/generarFormulaMedica';
+import { subirSoporteHTML } from '../../../lib/soportes';
 import SectionHeader from '../ui/SectionHeader';
 import FormField from '../ui/FormField';
-import { generarFormulaMedica } from '../../../lib/generarFormulaMedica';
 
 const INPUT: React.CSSProperties = {
   height: '40px', borderRadius: '8px', border: '1px solid #E5E7EB',
@@ -25,6 +29,7 @@ const SELECT: React.CSSProperties = {
 interface Props {
   form: HistoriaClinicaForm;
   set: (k: keyof HistoriaClinicaForm, v: string | string[]) => void;
+  leadId?: string;
 }
 
 // ─── Opciones de los selectores del Kit ──────────────────────────────────────
@@ -167,8 +172,30 @@ function KitBlock({ title, icon, children }: { title: string; icon: string; chil
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export default function S10_PlanManejo({ form, set }: Props) {
+export default function S10_PlanManejo({ form, set, leadId }: Props) {
   const esS1 = form.programa === 'control_metabolico';
+  const { leads } = useLeads();
+
+  async function handleGenerarFormula() {
+    generarFormulaMedica(form);
+
+    if (!leadId) return;
+
+    const lead      = leads.find(l => l.id === leadId);
+    const nombre    = [form.nombres, form.apellidos].filter(Boolean).join(' ') || lead?.name || '';
+    const logoUrl   = 'https://draeusimary.netlify.app/logo-dra-eusimary.jpg';
+    const htmlContent = buildFormulaMedicaHTML(form, logoUrl)
+      .replace('<script>window.onload = function(){ window.print(); }</script>', '');
+
+    await subirSoporteHTML(leadId, `Fórmula Médica — ${nombre || 'Paciente'}`, 'formula_medica', htmlContent);
+    toast.success('Fórmula generada · Guardada en Soportes y enviada al paciente');
+
+    if (supabase && lead?.email) {
+      supabase.functions.invoke('notify-formula-medica', {
+        body: { email: lead.email, nombre, htmlContent },
+      }).catch((err: unknown) => console.warn('notify-formula-medica:', err));
+    }
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -216,7 +243,7 @@ export default function S10_PlanManejo({ form, set }: Props) {
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button
             type="button"
-            onClick={() => generarFormulaMedica(form)}
+            onClick={handleGenerarFormula}
             disabled={!form.med_nombre && !form.med_otro}
             style={{
               display: 'flex', alignItems: 'center', gap: '8px',

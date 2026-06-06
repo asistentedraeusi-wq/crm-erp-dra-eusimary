@@ -5,6 +5,7 @@ import { EXAMENES_PARACLÍNICOS } from '../../../constants/historia-clinica';
 import { useLeads } from '../../../context/LeadsContext';
 import { supabase } from '../../../lib/supabase';
 import { generarOrdenMedica, buildOrdenMedicaHTML } from '../../../lib/generarOrdenMedica';
+import { subirSoporteHTML } from '../../../lib/soportes';
 import SectionHeader from '../ui/SectionHeader';
 import FormField from '../ui/FormField';
 
@@ -32,27 +33,26 @@ export default function S09_Paraclínicos({ form, set, leadId }: Props) {
     );
   }
 
-  function handleGenerarOrden() {
+  async function handleGenerarOrden() {
     generarOrdenMedica(form);
 
-    if (leadId) {
-      moveStage(leadId, 'paraclínicos');
-      toast.success('Orden generada · Lead movido a 05 · Paraclínicos');
+    if (!leadId) return;
 
-      // Envío automático al email del paciente — misma Orden Médica normativa
-      if (supabase) {
-        const lead = leads.find(l => l.id === leadId);
-        if (lead?.email) {
-          const nombre      = [form.nombres, form.apellidos].filter(Boolean).join(' ') || lead.name;
-          // Logo con URL pública para que se vea en el cliente de correo
-          const logoUrl     = 'https://draeusimary.netlify.app/logo-dra-eusimary.jpg';
-          const htmlContent = buildOrdenMedicaHTML(form, logoUrl)
-            .replace('<script>window.onload = function(){ window.print(); }</script>', '');
-          supabase.functions.invoke('notify-orden-medica', {
-            body: { email: lead.email, nombre, htmlContent },
-          }).catch((err: unknown) => console.warn('notify-orden-medica:', err));
-        }
-      }
+    moveStage(leadId, 'paraclínicos');
+
+    const lead        = leads.find(l => l.id === leadId);
+    const nombre      = [form.nombres, form.apellidos].filter(Boolean).join(' ') || lead?.name || '';
+    const logoUrl     = 'https://draeusimary.netlify.app/logo-dra-eusimary.jpg';
+    const htmlContent = buildOrdenMedicaHTML(form, logoUrl)
+      .replace('<script>window.onload = function(){ window.print(); }</script>', '');
+
+    await subirSoporteHTML(leadId, `Orden Médica — ${nombre || 'Paciente'}`, 'orden_medica', htmlContent);
+    toast.success('Orden generada · Guardada en Soportes · Lead movido a 05 · Paraclínicos');
+
+    if (supabase && lead?.email) {
+      supabase.functions.invoke('notify-orden-medica', {
+        body: { email: lead.email, nombre, htmlContent },
+      }).catch((err: unknown) => console.warn('notify-orden-medica:', err));
     }
   }
 

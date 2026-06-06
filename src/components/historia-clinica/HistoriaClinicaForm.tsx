@@ -243,7 +243,7 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
           <S02_Consulta form={form} set={set as (k: keyof HCForm, v: string) => void} />
         </div>
         <div style={SECTION_STYLE}>
-          <S10_PlanManejo form={form} set={set as (k: keyof HCForm, v: string | string[]) => void} />
+          <S10_PlanManejo form={form} set={set as (k: keyof HCForm, v: string | string[]) => void} leadId={leadId} />
         </div>
         <div style={SECTION_STYLE}>
           <S12_NotasMedico form={form} set={set as (k: keyof HCForm, v: string) => void} />
