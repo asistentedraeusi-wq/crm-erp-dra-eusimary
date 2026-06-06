@@ -98,6 +98,7 @@ interface LeadsContextValue {
   moveStage: (id: string, stage: StageId) => void
   addLead: (stageId: StageId) => Lead
   updateLead: (id: string, patch: Partial<Lead>) => void
+  deleteLead: (id: string) => void
   importLeads: (newLeads: Lead[]) => void
 }
 
@@ -228,12 +229,16 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l))
   }
 
+  function deleteLead(id: string) {
+    setLeads(prev => prev.filter(l => l.id !== id))
+  }
+
   function importLeads(newLeads: Lead[]) {
     setLeads(prev => [...prev, ...newLeads])
   }
 
   return (
-    <LeadsContext.Provider value={{ leads, moveStage, addLead, updateLead, importLeads }}>
+    <LeadsContext.Provider value={{ leads, moveStage, addLead, updateLead, deleteLead, importLeads }}>
       {children}
     </LeadsContext.Provider>
   )

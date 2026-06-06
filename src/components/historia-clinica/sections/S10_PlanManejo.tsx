@@ -1,6 +1,7 @@
 import type { HistoriaClinicaForm } from '../../../types/historia-clinica';
 import SectionHeader from '../ui/SectionHeader';
 import FormField from '../ui/FormField';
+import { generarFormulaMedica } from '../../../lib/generarFormulaMedica';
 
 const INPUT: React.CSSProperties = {
   height: '40px', borderRadius: '8px', border: '1px solid #E5E7EB',
@@ -91,6 +92,26 @@ const MESES_TITULACION = [
   { value: '3', label: 'Mes 3 — 1.0 mg/semana' },
 ];
 
+const MEDICAMENTOS_LISTA = [
+  { label: 'Semaglutida 0.25 mg/dosis — Ozempic® (inyectable semanal)',      nombre: 'Semaglutida 0.25 mg/dosis (Ozempic®) — Solución inyectable subcutánea, pluma precargada 1.5 mL. Aplicación semanal el mismo día de la semana.' },
+  { label: 'Semaglutida 0.5 mg/dosis — Ozempic® (inyectable semanal)',       nombre: 'Semaglutida 0.5 mg/dosis (Ozempic®) — Solución inyectable subcutánea, pluma precargada 1.5 mL. Aplicación semanal el mismo día de la semana.' },
+  { label: 'Semaglutida 1.0 mg/dosis — Ozempic® (inyectable semanal)',       nombre: 'Semaglutida 1.0 mg/dosis (Ozempic®) — Solución inyectable subcutánea, pluma precargada 3 mL. Aplicación semanal el mismo día de la semana.' },
+  { label: 'Semaglutida 2.4 mg/dosis — Wegovy® (inyectable semanal)',        nombre: 'Semaglutida 2.4 mg/dosis (Wegovy®) — Solución inyectable subcutánea, pluma precargada. Aplicación semanal el mismo día de la semana.' },
+  { label: 'Liraglutida 1.2 mg/dosis — Saxenda® (inyectable diario)',        nombre: 'Liraglutida 1.2 mg/dosis (Saxenda®) — Solución inyectable subcutánea, pluma precargada 3 mL. Aplicación diaria a la misma hora.' },
+  { label: 'Liraglutida 1.8 mg/dosis — Victoza® (inyectable diario)',        nombre: 'Liraglutida 1.8 mg/dosis (Victoza®) — Solución inyectable subcutánea, pluma precargada 3 mL. Aplicación diaria a la misma hora.' },
+  { label: 'Tirzepatida 2.5 mg/dosis — Mounjaro® (inyectable semanal)',      nombre: 'Tirzepatida 2.5 mg/dosis (Mounjaro®) — Solución inyectable subcutánea, pluma precargada. Aplicación semanal el mismo día de la semana.' },
+  { label: 'Tirzepatida 5 mg/dosis — Mounjaro® (inyectable semanal)',        nombre: 'Tirzepatida 5 mg/dosis (Mounjaro®) — Solución inyectable subcutánea, pluma precargada. Aplicación semanal el mismo día de la semana.' },
+  { label: 'Tirzepatida 10 mg/dosis — Mounjaro® (inyectable semanal)',       nombre: 'Tirzepatida 10 mg/dosis (Mounjaro®) — Solución inyectable subcutánea, pluma precargada. Aplicación semanal el mismo día de la semana.' },
+  { label: 'Metformina 500 mg — tableta (vía oral)',                          nombre: 'Metformina Clorhidrato 500 mg — Tableta de liberación inmediata. Administrar con alimentos para reducir efectos gastrointestinales.' },
+  { label: 'Metformina 850 mg — tableta (vía oral)',                          nombre: 'Metformina Clorhidrato 850 mg — Tableta de liberación inmediata. Administrar con alimentos para reducir efectos gastrointestinales.' },
+  { label: 'Metformina XR 1000 mg — tableta liberación prolongada',          nombre: 'Metformina Clorhidrato 1000 mg XR — Tableta de liberación prolongada. Administrar con la cena. No partir ni triturar.' },
+  { label: 'Empagliflozina 10 mg — Jardiance® (vía oral)',                   nombre: 'Empagliflozina 10 mg (Jardiance®) — Tableta. Administrar vía oral, una vez al día con o sin alimentos.' },
+  { label: 'Empagliflozina 25 mg — Jardiance® (vía oral)',                   nombre: 'Empagliflozina 25 mg (Jardiance®) — Tableta. Administrar vía oral, una vez al día con o sin alimentos.' },
+  { label: 'Levotiroxina 25 mcg — (vía oral)',                               nombre: 'Levotiroxina Sódica 25 mcg — Tableta. Administrar en ayunas, 30 minutos antes del desayuno.' },
+  { label: 'Levotiroxina 50 mcg — (vía oral)',                               nombre: 'Levotiroxina Sódica 50 mcg — Tableta. Administrar en ayunas, 30 minutos antes del desayuno.' },
+  { label: 'Levotiroxina 100 mcg — (vía oral)',                              nombre: 'Levotiroxina Sódica 100 mcg — Tableta. Administrar en ayunas, 30 minutos antes del desayuno.' },
+];
+
 // ─── Sub-componentes internos ─────────────────────────────────────────────────
 
 function SubLabel({ children }: { children: React.ReactNode }) {
@@ -154,12 +175,22 @@ export default function S10_PlanManejo({ form, set }: Props) {
       <SectionHeader number={11} title="Plan de Manejo" />
 
       {/* ── Medicación farmacológica ── */}
-      <div style={{ padding: '14px', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E5E7EB' }}>
+      <div style={{ padding: '14px', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <SubLabel>Medicación farmacológica</SubLabel>
+
+        {/* Selector + Dosis + Frecuencia */}
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '14px' }}>
-          <FormField label="Medicamento">
-            <input style={INPUT} value={form.med_nombre} onChange={e => set('med_nombre', e.target.value)}
-              placeholder="Nombre del medicamento / molécula" />
+          <FormField label="Medicamento (seleccionar de la lista)">
+            <select
+              style={SELECT}
+              value={form.med_nombre}
+              onChange={e => set('med_nombre', e.target.value)}
+            >
+              <option value="">— Seleccionar medicamento —</option>
+              {MEDICAMENTOS_LISTA.map(m => (
+                <option key={m.nombre} value={m.nombre}>{m.label}</option>
+              ))}
+            </select>
           </FormField>
           <FormField label="Dosis">
             <input style={INPUT} value={form.dosis} onChange={e => set('dosis', e.target.value)}
@@ -169,6 +200,38 @@ export default function S10_PlanManejo({ form, set }: Props) {
             <input style={INPUT} value={form.frecuencia} onChange={e => set('frecuencia', e.target.value)}
               placeholder="Ej: 1 vez/semana" />
           </FormField>
+        </div>
+
+        {/* Medicamento libre (no está en la lista) */}
+        <FormField label="Otro medicamento (escribir si no está en la lista)">
+          <input
+            style={INPUT}
+            value={form.med_otro ?? ''}
+            onChange={e => set('med_otro', e.target.value)}
+            placeholder="Nombre completo del medicamento adicional, dosis y vía de administración..."
+          />
+        </FormField>
+
+        {/* Botón Generar Orden Médica */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={() => generarFormulaMedica(form)}
+            disabled={!form.med_nombre && !form.med_otro}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              height: '40px', padding: '0 20px', borderRadius: '10px',
+              background: (form.med_nombre || form.med_otro) ? '#0A3D2E' : '#E5E7EB',
+              color: (form.med_nombre || form.med_otro) ? '#fff' : '#9CA3AF',
+              fontWeight: 700, fontSize: '13px', border: 'none',
+              cursor: (form.med_nombre || form.med_otro) ? 'pointer' : 'not-allowed',
+              boxShadow: (form.med_nombre || form.med_otro) ? '0 2px 10px rgba(10,61,46,0.25)' : 'none',
+              transition: 'all 0.15s',
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>℞</span>
+            Generar Orden Médica
+          </button>
         </div>
       </div>
 

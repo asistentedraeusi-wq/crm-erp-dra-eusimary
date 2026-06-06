@@ -46,7 +46,7 @@ const EMPTY: HCForm = {
   examenes: [], exam_otro: '', instr_lab: '',
   res_fecha: '', res_estado: '', res_obs: '', res_archivo_url: '', res_valores: {},
   fecha_2cita: '', tipo_2cita: '',
-  med_nombre: '', dosis: '', frecuencia: '',
+  med_nombre: '', med_otro: '', dosis: '', frecuencia: '',
   plan_nf: '', nutricion: '', actividad: '', metas: '', proxima: '',
   pm_plan_base: '', pm_proteinas: [], pm_vegetales: [], pm_restricciones: [],
   pm_snacks: [], pm_hidratacion: '', pm_tipo_aerobico: '', pm_minutos_sesion: '',

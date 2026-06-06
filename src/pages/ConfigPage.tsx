@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Lock, Eye, EyeOff, ShieldCheck, UserPlus, Pencil, Trash2,
-  CheckCircle2, XCircle, KeyRound, Users, RefreshCw,
+  CheckCircle2, XCircle, KeyRound, Users, RefreshCw, AlertTriangle,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useLeads } from '../context/LeadsContext'
 import { supabase } from '../lib/supabase'
 
 const CONFIG_PIN = 'C@$t2801'
@@ -429,6 +430,9 @@ function ConfigPanel() {
         </p>
       </div>
 
+      {/* ── Eliminación de Leads (solo admin) ─────────────────────── */}
+      {currentUser?.role === 'admin' && <LeadsAdmin />}
+
       {modal.open && (
         <UserModal
           user={modal.user}
@@ -437,6 +441,115 @@ function ConfigPanel() {
           saving={saving}
         />
       )}
+    </div>
+  )
+}
+
+// ─── Eliminación de Leads — solo Superadmin ──────────────────────────────────
+
+const STAGE_LABELS: Record<string, string> = {
+  nuevo: '01 · Nuevo Lead', contactado: '02 · Contactado', cita_agendada: '03 · Cita Agendada',
+  cita_blueprint: '04 · Cita BluePrint', 'paraclínicos': '05 · Paraclínicos',
+  segunda_cita: '06 · 2da Cita', pendiente_inicio: '07 · Pend. Inicio',
+  activo: '08 · Activo', renovacion: '09 · Renovación', no_renueva: '10 · No Renueva',
+  leads_nutrir: '11 · Leads en Nutrir',
+}
+
+function LeadsAdmin() {
+  const { leads, deleteLead } = useLeads()
+  const [search, setSearch] = useState('')
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+
+  const filtered = leads.filter(l =>
+    l.name.toLowerCase().includes(search.toLowerCase()) ||
+    l.email.toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <div style={{ marginTop: '32px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(239,68,68,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <AlertTriangle size={20} color="#DC2626" />
+        </div>
+        <div>
+          <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0D2244', margin: 0 }}>Gestión de Leads del Pipeline</h2>
+          <p style={{ fontSize: '12px', color: '#94A3B8', margin: '2px 0 0' }}>Solo visible para Superadmin — elimina leads creados por error</p>
+        </div>
+      </div>
+
+      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por nombre o email..."
+            style={{ width: '100%', height: '38px', borderRadius: '10px', border: '1.5px solid #E2E8F0', padding: '0 14px', fontSize: '13px', color: '#0D2244', outline: 'none', boxSizing: 'border-box' }}
+          />
+        </div>
+
+        {filtered.length === 0 ? (
+          <div style={{ padding: '32px', textAlign: 'center', color: '#94A3B8', fontSize: '14px' }}>
+            {leads.length === 0 ? 'No hay leads en el pipeline.' : 'Sin resultados para la búsqueda.'}
+          </div>
+        ) : (
+          filtered.map((lead, i) => (
+            <div key={lead.id} style={{
+              display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 20px',
+              borderBottom: i < filtered.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none',
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: '#0D2244' }}>{lead.name}</span>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: '#6B7280', background: '#F1F5F9', borderRadius: '20px', padding: '2px 8px' }}>
+                    {lead.id}
+                  </span>
+                  <span style={{ fontSize: '10px', fontWeight: 600, color: '#0891B2', background: '#ECFEFF', borderRadius: '20px', padding: '2px 8px' }}>
+                    {STAGE_LABELS[lead.stage] ?? lead.stage}
+                  </span>
+                </div>
+                <p style={{ fontSize: '12px', color: '#94A3B8', margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {lead.email} · {lead.date}
+                </p>
+              </div>
+
+              {confirmId === lead.id ? (
+                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                  <button
+                    onClick={() => { deleteLead(lead.id); setConfirmId(null) }}
+                    style={{ height: '34px', padding: '0 12px', borderRadius: '8px', border: 'none', background: '#EF4444', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Eliminar
+                  </button>
+                  <button
+                    onClick={() => setConfirmId(null)}
+                    style={{ height: '34px', padding: '0 12px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: '12px', cursor: 'pointer' }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmId(lead.id)}
+                  title="Eliminar lead"
+                  style={{ width: '34px', height: '34px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', flexShrink: 0 }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#DC2626'; e.currentTarget.style.borderColor = '#FCA5A5' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.borderColor = '#E2E8F0' }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      <div style={{ marginTop: '12px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.15)', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+        <AlertTriangle size={14} color="#DC2626" style={{ marginTop: '2px', flexShrink: 0 }} />
+        <p style={{ fontSize: '12px', color: '#991B1B', margin: 0, lineHeight: '1.6' }}>
+          La eliminación es permanente e inmediata. Solo eliminar leads creados por error — los pacientes reales deben mantenerse en el pipeline.
+        </p>
+      </div>
     </div>
   )
 }

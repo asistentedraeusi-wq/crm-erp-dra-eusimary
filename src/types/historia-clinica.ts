@@ -121,6 +121,7 @@ export interface HistoriaClinicaForm {
 
   // S10 — Plan de Manejo (campos base HC)
   med_nombre:     string;
+  med_otro:       string;
   dosis:          string;
   frecuencia:     string;
   plan_nf:        string;
