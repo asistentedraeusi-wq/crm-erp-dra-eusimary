@@ -935,7 +935,8 @@ function TabSeguimientoPanel({ lead }: { lead: Lead }) {
 
 function TabPagos({ lead }: { lead: Lead }) {
   const { moveStage, updateLead } = useLeads()
-  const [confirming, setConfirming] = useState(false)
+  const [confirmingFiltro, setConfirmingFiltro] = useState(false)
+  const [confirmingPlan,   setConfirmingPlan]   = useState(false)
 
   const plans = {
     S1: { name: 'Plan S1 — Control Metabólico', price: 500_000, period: 'Trimestral' },
@@ -943,130 +944,107 @@ function TabPagos({ lead }: { lead: Lead }) {
   }
   const plan = lead.plan ? plans[lead.plan] : null
 
-  function handleConfirmarPago() {
+  const filtroPagado   = lead.filtro_pagado ?? false
+  const pagoConfirmado = lead.pago_confirmado || lead.stage === 'activo' ||
+                         lead.stage === 'renovacion' || lead.stage === 'no_renueva'
+
+  function handleConfirmarFiltro() {
+    updateLead(lead.id, { filtro_pagado: true })
+    setConfirmingFiltro(false)
+  }
+
+  function handleConfirmarPlan() {
     const hoy = new Date().toISOString().split('T')[0]
     updateLead(lead.id, { pago_confirmado: true, plan_inicio: hoy })
     moveStage(lead.id, 'activo')
-    setConfirming(false)
+    setConfirmingPlan(false)
   }
 
-  const pendienteInicio = lead.stage === 'pendiente_inicio'
-  const pagoConfirmado  = lead.pago_confirmado || lead.stage === 'activo' ||
-                          lead.stage === 'renovacion' || lead.stage === 'no_renueva'
+  const Badge = ({ ok, label }: { ok: boolean; label: string }) => (
+    <span style={{
+      fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px',
+      background: ok ? '#D1FAE5' : '#FEF3C7',
+      color: ok ? '#065F46' : '#92400E',
+    }}>{label}</span>
+  )
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Consulta Filtro</p>
-        <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100">
-          <span className="text-xs text-[#0D2244] font-medium">1ra Cita (Filtro)</span>
-          <span className="text-xs font-bold text-[#0D2244]">$70.000 COP</span>
-        </div>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-      {plan && (
-        <div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Plan Activo</p>
-          <div className="p-4 bg-[#0D2244] rounded-xl text-white">
-            <p className="text-xs font-bold">{plan.name}</p>
-            <p className="text-2xl font-bold mt-2 tabular-nums">
-              ${plan.price.toLocaleString('es-CO')}
-              <span className="text-sm font-normal text-white/60 ml-1">COP</span>
-            </p>
-            <p className="text-[10px] text-white/50 mt-0.5">{plan.period}</p>
-            {lead.plan_inicio && (
-              <p className="text-[10px] text-emerald-300 mt-1">
-                ✓ Inicio: {new Date(lead.plan_inicio + 'T12:00:00').toLocaleDateString('es-CO', { day:'numeric', month:'long', year:'numeric' })}
-              </p>
-            )}
+      {/* ── Consulta Filtro ── */}
+      <div style={{ border: '1px solid #E5E7EB', borderRadius: '12px', overflow: 'hidden' }}>
+        <div style={{ background: '#F9FAFB', padding: '10px 14px', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <p style={{ fontSize: '11px', fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>Consulta Filtro</p>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: '#0D2244', margin: '2px 0 0' }}>1ra Cita — $70.000 COP</p>
           </div>
+          <Badge ok={filtroPagado} label={filtroPagado ? 'Pagado' : 'Pendiente'} />
         </div>
-      )}
-
-      <div>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Estado de pago</p>
-        <div className="flex flex-col gap-2">
-          {[
-            { label: 'Consulta filtro', amount: '$70.000', status: 'Pagado', ok: true },
-            {
-              label: plan ? plan.name : 'Plan',
-              amount: plan ? `$${plan.price.toLocaleString('es-CO')}` : '—',
-              status: pagoConfirmado ? 'Confirmado' : (pendienteInicio ? 'Pendiente confirmación' : 'Pendiente'),
-              ok: pagoConfirmado,
-            },
-          ].map(({ label, amount, status, ok }) => (
-            <div key={label} className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100">
-              <div>
-                <p className="text-xs font-medium text-[#0D2244]">{label}</p>
-                <p className="text-[10px] text-gray-400">{amount}</p>
-              </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ok ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                {status}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Confirmar Pago — solo visible cuando stage = pendiente_inicio ── */}
-      {pendienteInicio && !pagoConfirmado && (
-        <div style={{ border: '1.5px solid #CA8A04', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ background: '#FEFCE8', padding: '12px 14px', borderBottom: '1px solid #CA8A0430' }}>
-            <p style={{ fontSize: '11px', fontWeight: 800, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
-              ⏳ Confirmación de Pago Pendiente
-            </p>
-            <p style={{ fontSize: '11px', color: '#6B7280', margin: '4px 0 0' }}>
-              Una vez confirmes el pago, el paciente pasa a <strong>Activo</strong> y el Seguimiento se activa automáticamente.
-            </p>
-          </div>
-          <div style={{ padding: '12px 14px', background: '#fff' }}>
-            {!confirming ? (
-              <button
-                onClick={() => setConfirming(true)}
-                style={{
-                  width: '100%', padding: '10px', borderRadius: '8px',
-                  background: '#16A34A', border: 'none',
-                  fontSize: '13px', fontWeight: 700, color: '#fff',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', gap: '6px',
-                }}
-              >
-                <CheckCircle2 size={14} /> Confirmar Pago del Programa
+        {!filtroPagado && (
+          <div style={{ padding: '10px 14px', background: '#fff' }}>
+            {!confirmingFiltro ? (
+              <button onClick={() => setConfirmingFiltro(true)} style={{
+                width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #D1FAE5',
+                background: '#F0FDF4', fontSize: '12px', fontWeight: 700, color: '#15803D', cursor: 'pointer',
+              }}>
+                ✓ Marcar consulta filtro como pagada
               </button>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <p style={{ fontSize: '12px', color: '#374151', textAlign: 'center', margin: 0 }}>
-                  ¿Confirmas que el paciente realizó el pago?
-                </p>
+                <p style={{ fontSize: '12px', color: '#374151', textAlign: 'center', margin: 0 }}>¿Confirmas el pago de $70.000?</p>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => setConfirming(false)}
-                    style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#fff', fontSize: '12px', fontWeight: 600, color: '#6B7280', cursor: 'pointer' }}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleConfirmarPago}
-                    style={{ flex: 1, padding: '8px', borderRadius: '8px', background: '#16A34A', border: 'none', fontSize: '12px', fontWeight: 700, color: '#fff', cursor: 'pointer' }}
-                  >
-                    ✓ Sí, confirmar
-                  </button>
+                  <button onClick={() => setConfirmingFiltro(false)} style={{ flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#fff', fontSize: '12px', fontWeight: 600, color: '#6B7280', cursor: 'pointer' }}>Cancelar</button>
+                  <button onClick={handleConfirmarFiltro} style={{ flex: 1, padding: '7px', borderRadius: '8px', background: '#16A34A', border: 'none', fontSize: '12px', fontWeight: 700, color: '#fff', cursor: 'pointer' }}>✓ Sí, confirmar</button>
                 </div>
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {pagoConfirmado && (
-        <div style={{ background: '#F0FDF4', border: '1px solid #6EE7B7', borderRadius: '10px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <CheckCircle2 size={16} color="#16A34A" />
+      {/* ── Plan del Programa ── */}
+      <div style={{ border: '1px solid #E5E7EB', borderRadius: '12px', overflow: 'hidden' }}>
+        <div style={{ background: '#F9FAFB', padding: '10px 14px', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <p style={{ fontSize: '12px', fontWeight: 700, color: '#15803D', margin: 0 }}>Pago confirmado — Paciente Activo</p>
-            {lead.plan_inicio && <p style={{ fontSize: '11px', color: '#6B7280', margin: '2px 0 0' }}>Programa iniciado el {new Date(lead.plan_inicio + 'T12:00:00').toLocaleDateString('es-CO', { day:'numeric', month:'long' })}</p>}
+            <p style={{ fontSize: '11px', fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>Plan del Programa</p>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: '#0D2244', margin: '2px 0 0' }}>
+              {plan ? `${plan.name} — $${plan.price.toLocaleString('es-CO')} COP` : 'Sin plan asignado'}
+            </p>
+            {lead.plan_inicio && <p style={{ fontSize: '11px', color: '#16A34A', margin: '2px 0 0' }}>Inicio: {new Date(lead.plan_inicio + 'T12:00:00').toLocaleDateString('es-CO', { day:'numeric', month:'long', year:'numeric' })}</p>}
           </div>
+          <Badge ok={pagoConfirmado} label={pagoConfirmado ? 'Confirmado' : 'Pendiente'} />
         </div>
-      )}
+        {plan && !pagoConfirmado && (
+          <div style={{ padding: '10px 14px', background: '#fff' }}>
+            {!confirmingPlan ? (
+              <button onClick={() => setConfirmingPlan(true)} style={{
+                width: '100%', padding: '8px', borderRadius: '8px', border: 'none',
+                background: '#0A3D2E', fontSize: '12px', fontWeight: 700, color: '#fff', cursor: 'pointer',
+              }}>
+                <CheckCircle2 size={13} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
+                Confirmar Pago del Programa → Paciente Activo
+              </button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <p style={{ fontSize: '12px', color: '#374151', textAlign: 'center', margin: 0 }}>
+                  ¿Confirmas el pago de ${plan.price.toLocaleString('es-CO')} COP? El lead pasará a <strong>Activo</strong>.
+                </p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => setConfirmingPlan(false)} style={{ flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#fff', fontSize: '12px', fontWeight: 600, color: '#6B7280', cursor: 'pointer' }}>Cancelar</button>
+                  <button onClick={handleConfirmarPlan} style={{ flex: 1, padding: '7px', borderRadius: '8px', background: '#16A34A', border: 'none', fontSize: '12px', fontWeight: 700, color: '#fff', cursor: 'pointer' }}>✓ Sí, confirmar</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {pagoConfirmado && (
+          <div style={{ padding: '10px 14px', background: '#F0FDF4', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle2 size={14} color="#16A34A" />
+            <p style={{ fontSize: '12px', fontWeight: 700, color: '#15803D', margin: 0 }}>Pago confirmado — Paciente Activo</p>
+          </div>
+        )}
+      </div>
+
     </div>
   )
 }

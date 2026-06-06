@@ -49,6 +49,7 @@ export interface Lead {
   condicion?: string
   fuente?: string
   // Gestión de pago e inicio de programa
+  filtro_pagado?:   boolean
   pago_confirmado?: boolean
   plan_inicio?:     string    // fecha ISO 'YYYY-MM-DD'
   // Seguimiento semanal (12 semanas)

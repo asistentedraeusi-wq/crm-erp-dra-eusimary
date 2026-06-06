@@ -8,12 +8,12 @@ import { useLeads } from '../context/LeadsContext'
 
 type Period = 'mes' | 'acumulado'
 
-// Datos históricos acumulados (mock — se conectará a Supabase)
+// Acumulado histórico — se actualiza manualmente al cerrar cada mes
 const ACUMULADO = {
-  leads: 214, pacientes: 138, citas: 127,
-  conversion: 64, planS1: 47, planS2: 68,
-  referidos: 29, planesVendidos: 115,
-  valorCOP: 62_500_000,
+  leads: 0, pacientes: 0, citas: 0,
+  conversion: 0, planS1: 0, planS2: 0,
+  referidos: 0, planesVendidos: 0,
+  valorCOP: 0,
 }
 
 function formatCOP(n: number) {
