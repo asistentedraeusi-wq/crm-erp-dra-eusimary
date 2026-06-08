@@ -53,7 +53,7 @@ export default function S07_ExamenFisico({ form, set }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <SectionHeader number={6} title="Examen Fisico" />
+      <SectionHeader number={7} title="Examen Fisico" />
 
       <FormField label="Modalidad de atencion">
         <ModalityToggle value={form.modalidad} onChange={v => set('modalidad', v)} />

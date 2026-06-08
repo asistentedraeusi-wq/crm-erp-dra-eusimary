@@ -60,7 +60,7 @@ export default function S09_Paraclínicos({ form, set, leadId }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <SectionHeader number={8} title="Paraclínicos Solicitados" />
+      <SectionHeader number={9} title="Paraclínicos Solicitados" />
 
       <p style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
         Seleccionar examenes a solicitar

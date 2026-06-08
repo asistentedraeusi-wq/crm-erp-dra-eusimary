@@ -27,7 +27,7 @@ interface Props {
 export default function S02_Consulta({ form, set }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      <SectionHeader number={10} title="Datos de la Consulta" />
+      <SectionHeader number={5} title="Datos de la Consulta" />
 
       <FormField label="Programa clinico" required>
         <select style={SELECT} value={form.programa} onChange={e => set('programa', e.target.value)}>

@@ -199,6 +199,9 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
           <S05_Gineco form={form} set={set as (k: keyof HCForm, v: string | boolean) => void} sexo={form.sexo} />
         </div>
         <div style={SECTION_STYLE}>
+          <S02_Consulta form={form} set={set as (k: keyof HCForm, v: string) => void} />
+        </div>
+        <div style={SECTION_STYLE}>
           <S06_Sintomas form={form} set={set as (k: keyof HCForm, v: string | string[]) => void} />
         </div>
         <div style={SECTION_STYLE}>
@@ -238,9 +241,6 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
 
         <div style={SECTION_STYLE}>
           <S09b_ResultadosLab form={form} set={set} readOnly={readOnly} />
-        </div>
-        <div style={SECTION_STYLE}>
-          <S02_Consulta form={form} set={set as (k: keyof HCForm, v: string) => void} />
         </div>
         <div style={SECTION_STYLE}>
           <S10_PlanManejo form={form} set={set as (k: keyof HCForm, v: string | string[]) => void} leadId={leadId} />

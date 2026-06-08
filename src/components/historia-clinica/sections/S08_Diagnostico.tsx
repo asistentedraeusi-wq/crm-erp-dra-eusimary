@@ -94,7 +94,7 @@ export default function S08_Diagnostico({ form, set }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-      <SectionHeader number={7} title="Diagnostico" />
+      <SectionHeader number={8} title="Diagnostico" />
 
       {/* ── Chips CIE-10 frecuentes ─────────────────────────────────────── */}
       <div>

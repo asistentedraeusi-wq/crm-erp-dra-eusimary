@@ -12,7 +12,7 @@ interface Props {
 export default function S06_Sintomas({ form, set }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <SectionHeader number={5} title="Sintomatologia Actual" />
+      <SectionHeader number={6} title="Sintomatologia Actual" />
 
       <CheckGroup
         label="Seleccionar sintomas presentes"
