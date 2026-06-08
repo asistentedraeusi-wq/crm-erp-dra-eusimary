@@ -951,8 +951,9 @@ function TabPagos({ lead }: { lead: Lead }) {
 
   function handleConfirmarFiltro() {
     updateLead(lead.id, { filtro_pagado: true })
+    moveStage(lead.id, 'cita_blueprint')
     setConfirmingFiltro(false)
-    toast.success('✓ Consulta filtro marcada como pagada')
+    toast.success('✓ Consulta filtro pagada · Lead movido a 04 · Cita Blueprint')
   }
 
   function handleConfirmarPlan() {
