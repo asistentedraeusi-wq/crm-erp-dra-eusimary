@@ -46,13 +46,41 @@ export default function S09_Paraclínicos({ form, set, leadId }: Props) {
     const htmlContent = buildOrdenMedicaHTML(form, logoUrl)
       .replace('<script>window.onload = function(){ window.print(); }</script>', '');
 
-    await subirSoporteHTML(leadId, `Orden Médica — ${nombre || 'Paciente'}`, 'orden_medica', htmlContent);
-    toast.success('Orden generada · Guardada en Soportes · Lead movido a 05 · Paraclínicos');
+    // ── 1. Guardar en Soportes ──────────────────────────────────────────────
+    const saved = await subirSoporteHTML(
+      leadId,
+      `Orden Médica — ${nombre || 'Paciente'}`,
+      'orden_medica',
+      htmlContent,
+    );
+    if (saved) {
+      toast.success('✓ Orden Médica guardada en Soportes');
+    } else {
+      toast.warning('Orden generada pero no se guardó en Soportes — verifica el bucket "soportes" en Supabase Storage.');
+    }
 
-    if (supabase && lead?.email) {
-      supabase.functions.invoke('notify-orden-medica', {
-        body: { email: lead.email, nombre, htmlContent },
-      }).catch((err: unknown) => console.warn('notify-orden-medica:', err));
+    // ── 2. Enviar email al paciente ─────────────────────────────────────────
+    if (!supabase) return;
+
+    const emailPaciente = lead?.email;
+    if (!emailPaciente || emailPaciente === 'nuevo@email.com') {
+      toast.warning('Sin email válido en el perfil del paciente — no se envió la orden por correo.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke('notify-orden-medica', {
+        body: { email: emailPaciente, nombre, htmlContent },
+      });
+      if (error) {
+        toast.warning(`Email no enviado: ${error.message ?? 'error desconocido'}`);
+      } else {
+        toast.success(`✓ Orden Médica enviada a ${emailPaciente}`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.warning(`Email no enviado: ${msg}`);
+      console.warn('notify-orden-medica:', err);
     }
   }
 
