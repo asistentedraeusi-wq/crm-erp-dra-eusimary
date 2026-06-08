@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import {
   X, Plus, Search, Phone, Mail, ChevronRight,
@@ -951,6 +952,7 @@ function TabPagos({ lead }: { lead: Lead }) {
   function handleConfirmarFiltro() {
     updateLead(lead.id, { filtro_pagado: true })
     setConfirmingFiltro(false)
+    toast.success('✓ Consulta filtro marcada como pagada')
   }
 
   function handleConfirmarPlan() {
@@ -958,6 +960,7 @@ function TabPagos({ lead }: { lead: Lead }) {
     updateLead(lead.id, { pago_confirmado: true, plan_inicio: hoy })
     moveStage(lead.id, 'activo')
     setConfirmingPlan(false)
+    toast.success('✓ Pago confirmado — Paciente Activo')
   }
 
   const Badge = ({ ok, label }: { ok: boolean; label: string }) => (
@@ -1189,7 +1192,10 @@ function LeadPanel({
             className="border-t border-gray-100 flex flex-shrink-0"
             style={{ padding: '14px 24px', gap: '10px' }}
           >
-            <button className="flex-1 h-9 rounded-xl bg-[#12C49A] text-white text-xs font-bold hover:bg-[#0EA882] transition-colors shadow-[0_2px_10px_rgba(18,196,154,0.30)]">
+            <button
+              onClick={() => toast.success('✓ Cambios guardados automáticamente')}
+              className="flex-1 h-9 rounded-xl bg-[#12C49A] text-white text-xs font-bold hover:bg-[#0EA882] transition-colors shadow-[0_2px_10px_rgba(18,196,154,0.30)]"
+            >
               Guardar cambios
             </button>
             <button className="flex-1 h-9 rounded-xl border border-gray-200 text-[#0D2244] text-xs font-semibold hover:bg-gray-50 transition-colors">

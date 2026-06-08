@@ -120,7 +120,8 @@ export default function DashboardPage() {
   const conversion      = totalLeads > 0
     ? Math.round((leads.filter(l => l.stage === 'activo' || l.stage === 'renovacion').length / totalLeads) * 100)
     : 0
-  const valorCOP        = planS1 * 500_000 + planS2 * 250_000
+  const filtrosPagados  = leads.filter(l => l.filtro_pagado).length
+  const valorCOP        = planS1 * 500_000 + planS2 * 250_000 + filtrosPagados * 70_000
 
   const live = { leads: totalLeads, pacientes: pacientesActivos, citas: citasMedicas, conversion, planS1, planS2, referidos, planesVendidos, valorCOP }
   const d = period === 'mes' ? live : ACUMULADO
@@ -162,7 +163,7 @@ export default function DashboardPage() {
         <div className="relative overflow-hidden bg-gradient-to-br from-[#0D2244] to-[#1A3A6E] rounded-2xl mb-8 flex items-center justify-between shadow-[0_4px_24px_rgba(13,34,68,0.22)]" style={{ padding: '28px 36px' }}>
           <div className="banner-shimmer" />
           <div>
-            <p className="text-white/55 text-sm font-medium mb-2">Valor total planes vendidos</p>
+            <p className="text-white/55 text-sm font-medium mb-2">Ingresos totales (consultas + planes)</p>
             <p className="text-white text-5xl font-bold tabular-nums tracking-tight leading-none">
               {formatCOP(d.valorCOP)}
               <span className="text-white/40 text-xl font-normal ml-2">COP</span>
