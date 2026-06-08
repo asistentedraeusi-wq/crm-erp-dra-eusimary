@@ -98,11 +98,18 @@ export interface HistoriaClinicaForm {
   tn:             string;
   tc:             string;
 
-  // S08 — Diagnostico
+  // S08 — Diagnostico (hasta 5 + observaciones libres)
   dx1:            string;
   cie1:           string;
   dx2:            string;
   cie2:           string;
+  dx3:            string;
+  cie3:           string;
+  dx4:            string;
+  cie4:           string;
+  dx5:            string;
+  cie5:           string;
+  dx_obs:         string;
 
   // S09 — Paraclínicos
   examenes:       string[];

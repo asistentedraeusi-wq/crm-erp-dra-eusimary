@@ -42,7 +42,7 @@ const EMPTY: HCForm = {
   temp: '', sato2: '', fr: '', grasa: '', grasa_kg: '', muscular: '',
   magra_kg: '', agua_total: '', fat_range: '', ef_obs: '',
   tp: '', th: '', ta: '', ts: 'F', tw: '', thip: '', tn: '', tc: '',
-  dx1: '', cie1: '', dx2: '', cie2: '',
+  dx1: '', cie1: '', dx2: '', cie2: '', dx3: '', cie3: '', dx4: '', cie4: '', dx5: '', cie5: '', dx_obs: '',
   examenes: [], exam_otro: '', instr_lab: '',
   res_fecha: '', res_estado: '', res_obs: '', res_archivo_url: '', res_valores: {},
   fecha_2cita: '', tipo_2cita: '',
