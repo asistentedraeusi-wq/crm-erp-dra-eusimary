@@ -163,8 +163,13 @@ async function upsertLead(lead: Lead): Promise<void> {
 
 async function deleteLeadSb(id: string): Promise<void> {
   if (!supabase) return
-  const { error } = await supabase.from('crm_leads').delete().eq('id', id)
-  if (error) console.warn('crm_leads delete:', error.message)
+  // Soft-delete: marcar con deleted_at en lugar de borrar físicamente
+  // Recuperable desde Supabase Dashboard (vista crm_leads_papelera) por 30 días
+  const { error } = await supabase
+    .from('crm_leads')
+    .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) console.warn('crm_leads soft-delete:', error.message)
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
