@@ -34,7 +34,7 @@ const EMPTY: HCForm = {
   tipo_consulta: '', programa: '', num_hc: '', motivo: '',
   ant_pers: [], ant_pers_obs: '', ant_fam: [], ant_fam_obs: '',
   meds: [], meds_obs: '', alergias: '',
-  tabaco: '', alcohol: '', ejercicio: '', sueno: '', agua: '', dieta: '',
+  tabaco: '', alcohol: '', ejercicio: '', sueno: '', agua: '', dieta: '', habitos_obs: '',
   gineco: false, ciclo: '', fum: '', g: '', p: '', c: '', a: '', anticonc: '',
   sintomas: [], sint_obs: '',
   modalidad: 'presencial',

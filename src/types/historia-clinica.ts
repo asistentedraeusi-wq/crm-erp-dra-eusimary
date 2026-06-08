@@ -53,6 +53,7 @@ export interface HistoriaClinicaForm {
   sueno:          string;
   agua:           string;
   dieta:          string;
+  habitos_obs:    string;
 
   // S05 — Ginecologico
   gineco:         boolean;
