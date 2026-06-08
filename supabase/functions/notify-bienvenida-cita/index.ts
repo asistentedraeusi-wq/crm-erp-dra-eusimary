@@ -146,7 +146,17 @@ function buildHTML(nombre: string): string {
 </html>`
 }
 
+const CORS = {
+  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
 Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { status: 200, headers: CORS })
+  }
+
   try {
     const { email, nombre } = await req.json() as {
       email:  string
@@ -155,7 +165,7 @@ Deno.serve(async (req: Request) => {
 
     if (!email) {
       return new Response(JSON.stringify({ skipped: 'no_email' }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
+        status: 200, headers: { ...CORS, 'Content-Type': 'application/json' },
       })
     }
 
@@ -181,12 +191,12 @@ Deno.serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({ ok: res.ok, status: res.status }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } }
     )
   } catch (err) {
     console.error('notify-bienvenida-cita error:', err)
     return new Response(JSON.stringify({ error: 'internal_error' }), {
-      status: 500, headers: { 'Content-Type': 'application/json' },
+      status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
     })
   }
 })
