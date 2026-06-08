@@ -10,19 +10,18 @@ export type StageId =
   | 'activo' | 'renovacion' | 'no_renueva' | 'leads_nutrir'
 
 export interface SeguimientoSemanal {
-  semana:              number    // 1–12
+  semana:              number
   fecha?:              string
   peso?:               string
   cintura?:            string
   pa?:                 string
-  dosis?:              string    // S1
-  sitio_inyeccion?:    string    // S1
+  dosis?:              string
+  sitio_inyeccion?:    string
   dias_ejercicio?:     string
   vasos_agua?:         string
   sintomas?:           string[]
   adherencia?:         'excelente' | 'regular' | 'bajo'
   notas?:              string
-  // Control médico (semanas 4, 8, 12)
   control_grasa?:      string
   control_magra?:      string
   control_nueva_dosis?:string
@@ -43,32 +42,40 @@ export interface Lead {
   tags: string[]
   source?: string
   notes?: string
-  // Campos clínicos — vienen de la tabla leads de Supabase
   meta?: string
   objetivo?: string
   condicion?: string
   fuente?: string
-  // Gestión de pago e inicio de programa
   filtro_pagado?:   boolean
   pago_confirmado?: boolean
-  plan_inicio?:     string    // fecha ISO 'YYYY-MM-DD'
-  // Seguimiento semanal (12 semanas)
+  plan_inicio?:     string
   seguimiento?:     SeguimientoSemanal[]
 }
 
-// ─── Datos iniciales (mock) ───────────────────────────────────────────────────
+// ─── Storage keys ─────────────────────────────────────────────────────────────
 
-const INITIAL_LEADS: Lead[] = []
+const STORAGE_KEY  = 'crm_eusimary_leads_v1'
+const CAL_PROC_KEY = 'crm_cal_processed_v1'
+const MIGRATED_KEY = 'crm_sb_migrated_v1'
 
-const STORAGE_KEY     = 'crm_eusimary_leads_v1'
-const CAL_PROC_KEY    = 'crm_cal_processed_v1'
-
-// Orden de etapas — solo avanzamos, nunca retrocedemos por webhook de Cal.com
+// Orden de etapas — solo avanzamos por webhook de Cal.com
 const STAGE_ORDER: StageId[] = [
   'nuevo', 'contactado', 'cita_agendada', 'cita_blueprint',
   'paraclínicos', 'segunda_cita', 'pendiente_inicio',
   'activo', 'renovacion', 'no_renueva',
 ]
+
+// ─── localStorage helpers ─────────────────────────────────────────────────────
+
+function loadLeadsLocal(): Lead[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
+    return JSON.parse(raw) as Lead[]
+  } catch {
+    return []
+  }
+}
 
 function getProcessedCal(): Set<string> {
   try { return new Set(JSON.parse(localStorage.getItem(CAL_PROC_KEY) ?? '[]')) }
@@ -81,15 +88,83 @@ function markProcessedCal(id: string) {
   localStorage.setItem(CAL_PROC_KEY, JSON.stringify([...s]))
 }
 
-function loadLeads(): Lead[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return INITIAL_LEADS
-    const parsed = JSON.parse(raw) as Lead[]
-    return parsed.length > 0 ? parsed : INITIAL_LEADS
-  } catch {
-    return INITIAL_LEADS
+// ─── Supabase helpers ─────────────────────────────────────────────────────────
+
+type DbRow = Record<string, unknown>
+
+function rowToLead(row: DbRow): Lead {
+  return {
+    id:              row.id as string,
+    name:            (row.name as string) || '',
+    phone:           (row.phone as string) || '',
+    email:           (row.email as string) || '',
+    age:             (row.age as number) || 0,
+    city:            (row.city as string) || '',
+    stage:           (row.stage as StageId) || 'nuevo',
+    date:            (row.date as string) || '',
+    plan:            (row.plan as Lead['plan']) ?? undefined,
+    tags:            (row.tags as string[]) || [],
+    source:          (row.source as string) ?? undefined,
+    notes:           (row.notes as string) ?? undefined,
+    meta:            (row.meta as string) ?? undefined,
+    objetivo:        (row.objetivo as string) ?? undefined,
+    condicion:       (row.condicion as string) ?? undefined,
+    fuente:          (row.fuente as string) ?? undefined,
+    filtro_pagado:   (row.filtro_pagado as boolean) ?? undefined,
+    pago_confirmado: (row.pago_confirmado as boolean) ?? undefined,
+    plan_inicio:     (row.plan_inicio as string) ?? undefined,
+    seguimiento:     (row.seguimiento as SeguimientoSemanal[]) ?? undefined,
   }
+}
+
+function leadToRow(lead: Lead) {
+  return {
+    id:              lead.id,
+    name:            lead.name,
+    phone:           lead.phone,
+    email:           lead.email,
+    age:             lead.age,
+    city:            lead.city,
+    stage:           lead.stage,
+    date:            lead.date,
+    plan:            lead.plan ?? null,
+    tags:            lead.tags,
+    source:          lead.source ?? null,
+    notes:           lead.notes ?? null,
+    meta:            lead.meta ?? null,
+    objetivo:        lead.objetivo ?? null,
+    condicion:       lead.condicion ?? null,
+    fuente:          lead.fuente ?? null,
+    filtro_pagado:   lead.filtro_pagado ?? null,
+    pago_confirmado: lead.pago_confirmado ?? null,
+    plan_inicio:     lead.plan_inicio ?? null,
+    seguimiento:     lead.seguimiento ?? null,
+    updated_at:      new Date().toISOString(),
+  }
+}
+
+async function fetchAllLeads(): Promise<Lead[] | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase
+    .from('crm_leads')
+    .select('*')
+    .order('created_at', { ascending: true })
+  if (error) { console.warn('crm_leads fetch:', error.message); return null }
+  return (data ?? []).map(row => rowToLead(row as DbRow))
+}
+
+async function upsertLead(lead: Lead): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase
+    .from('crm_leads')
+    .upsert(leadToRow(lead), { onConflict: 'id' })
+  if (error) console.warn('crm_leads upsert:', error.message)
+}
+
+async function deleteLeadSb(id: string): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase.from('crm_leads').delete().eq('id', id)
+  if (error) console.warn('crm_leads delete:', error.message)
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -106,9 +181,68 @@ interface LeadsContextValue {
 const LeadsContext = createContext<LeadsContextValue | null>(null)
 
 export function LeadsProvider({ children }: { children: ReactNode }) {
-  const [leads, setLeads] = useState<Lead[]>(loadLeads)
+  // Initialize from localStorage so the UI renders immediately without flicker
+  const [leads, setLeads] = useState<Lead[]>(loadLeadsLocal)
 
-  // Persiste en localStorage cada vez que cambia el estado
+  // Ref siempre actualizado para callbacks de Realtime
+  const leadsRef = useRef(leads)
+  useEffect(() => { leadsRef.current = leads }, [leads])
+
+  // ─── Sync inicial desde Supabase (fuente de verdad) ──────────────────────
+  useEffect(() => {
+    async function init() {
+      // Primera vez en este navegador: migrar localStorage → Supabase
+      if (!localStorage.getItem(MIGRATED_KEY)) {
+        const localLeads = loadLeadsLocal()
+        if (localLeads.length > 0) {
+          await Promise.all(localLeads.map(upsertLead))
+          toast.success(`✓ ${localLeads.length} leads sincronizados con la nube`)
+        }
+        localStorage.setItem(MIGRATED_KEY, '1')
+      }
+
+      // Cargar datos desde Supabase (estado compartido entre usuarios)
+      const sbLeads = await fetchAllLeads()
+      if (sbLeads !== null) {
+        setLeads(sbLeads)
+        // Actualizar caché local
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sbLeads))
+      }
+    }
+    init()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Realtime: recibir cambios del otro usuario en vivo ──────────────────
+  useEffect(() => {
+    const sb = supabase
+    if (!sb) return
+
+    const channel = sb
+      .channel('crm-leads-realtime')
+      .on(
+        'postgres_changes' as const,
+        { event: '*', schema: 'public', table: 'crm_leads' },
+        payload => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const incoming = rowToLead(payload.new as DbRow)
+            setLeads(prev => {
+              const exists = prev.some(l => l.id === incoming.id)
+              return exists
+                ? prev.map(l => l.id === incoming.id ? incoming : l)
+                : [...prev, incoming]
+            })
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as { id: string }).id
+            setLeads(prev => prev.filter(l => l.id !== deletedId))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => { sb.removeChannel(channel) }
+  }, [])
+
+  // Caché local: siempre refleja el estado actual para modo offline
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(leads))
   }, [leads])
@@ -116,25 +250,25 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   // Auto-avance por tiempo para leads de fuente Guia
   useEffect(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0)
-    setLeads(prev => prev.map(lead => {
-      const fuente = (lead.source ?? lead.fuente ?? '').toLowerCase()
-      if (fuente !== 'guia') return lead
-      const leadDate = new Date(lead.date); leadDate.setHours(0, 0, 0, 0)
-      const days = Math.floor((today.getTime() - leadDate.getTime()) / 86_400_000)
-      if (lead.stage === 'nuevo' && days >= 2) return { ...lead, stage: 'contactado' as StageId }
-      if (lead.stage === 'contactado' && days >= 21) return { ...lead, stage: 'leads_nutrir' as StageId }
-      return lead
-    }))
-  }, [])
-
-  // Ref siempre actualizado — necesario para leer el estado actual
-  // desde dentro de callbacks de Realtime sin re-suscribirse cada render
-  const leadsRef = useRef(leads)
-  useEffect(() => { leadsRef.current = leads }, [leads])
+    setLeads(prev => {
+      const updated = prev.map(lead => {
+        const fuente = (lead.source ?? lead.fuente ?? '').toLowerCase()
+        if (fuente !== 'guia') return lead
+        const leadDate = new Date(lead.date); leadDate.setHours(0, 0, 0, 0)
+        const days = Math.floor((today.getTime() - leadDate.getTime()) / 86_400_000)
+        if (lead.stage === 'nuevo' && days >= 2) return { ...lead, stage: 'contactado' as StageId }
+        if (lead.stage === 'contactado' && days >= 21) return { ...lead, stage: 'leads_nutrir' as StageId }
+        return lead
+      })
+      // Persistir cambios de auto-avance en Supabase
+      updated.forEach((lead, i) => {
+        if (lead.stage !== prev[i]?.stage) upsertLead(lead)
+      })
+      return updated
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Cal.com Realtime ───────────────────────────────────────────────────────
-  // Cuando el paciente agenda en Cal.com → webhook → cal_bookings → aquí
-  // Se procesa tanto on-mount (bookings pendientes) como en tiempo real
   useEffect(() => {
     const sb = supabase
     if (!sb) return
@@ -155,8 +289,9 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         const ci = STAGE_ORDER.indexOf(lead.stage)
         const ti = STAGE_ORDER.indexOf(targetStage)
         if (ti > ci) {
-          // setLeads funcional — seguro desde closure estático (setLeads es estable)
-          setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, stage: targetStage } : l))
+          const updated = { ...lead, stage: targetStage }
+          setLeads(prev => prev.map(l => l.id === lead.id ? updated : l))
+          upsertLead(updated)
           toast.success(
             targetStage === 'segunda_cita'
               ? `📅 ${b.nombre || lead.name} agendó 2ª Cita → 06 · 2da Cita Médica`
@@ -170,13 +305,11 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       markProcessedCal(b.id)
     }
 
-    // 1. Procesar bookings pendientes que llegaron cuando el CRM estaba cerrado
     sb.from('cal_bookings')
       .select('id, email, event_slug, nombre')
       .order('created_at', { ascending: true })
       .then(({ data }) => { data?.forEach(b => handleBooking(b as CalRow)) })
 
-    // 2. Suscripción Realtime: nuevos bookings mientras el CRM está abierto
     const channel = sb
       .channel('cal-bookings-realtime')
       .on(
@@ -189,15 +322,15 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     return () => { sb.removeChannel(channel) }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Mutaciones ───────────────────────────────────────────────────────────
+
   function moveStage(id: string, stage: StageId) {
     setLeads(prev => {
       const updated = prev.map(l => l.id === id ? { ...l, stage } : l)
-
-      // Cuando llega a Paraclínicos → recordatorio 48h al paciente + notificación a la Dra.
-      // Se dispara desde HC (guardar Cita 1) y desde el Pipeline (mover manual)
-      if (stage === 'paraclínicos' && supabase) {
-        const lead = updated.find(l => l.id === id)
-        if (lead?.email) {
+      const lead = updated.find(l => l.id === id)
+      if (lead) {
+        upsertLead(lead)
+        if (stage === 'paraclínicos' && supabase && lead.email) {
           const payload = { email: lead.email, nombre: lead.name, celular: lead.phone }
           supabase.functions.invoke('notify-paraclinicos', { body: payload })
             .catch((err: unknown) => console.warn('notify-paraclinicos:', err))
@@ -205,14 +338,13 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
             .catch((err: unknown) => console.warn('notify-doctor:', err))
         }
       }
-
       return updated
     })
   }
 
   function addLead(stageId: StageId): Lead {
     const newLead: Lead = {
-      id: `L${String(leads.length + 1).padStart(3, '0')}`,
+      id: `L${Date.now().toString(36).toUpperCase()}`,
       name: 'Nuevo Lead',
       phone: '+57 300 0000000',
       email: 'nuevo@email.com',
@@ -223,19 +355,27 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       tags: [],
     }
     setLeads(prev => [...prev, newLead])
+    upsertLead(newLead)
     return newLead
   }
 
   function updateLead(id: string, patch: Partial<Lead>) {
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l))
+    setLeads(prev => {
+      const updated = prev.map(l => l.id === id ? { ...l, ...patch } : l)
+      const lead = updated.find(l => l.id === id)
+      if (lead) upsertLead(lead)
+      return updated
+    })
   }
 
   function deleteLead(id: string) {
     setLeads(prev => prev.filter(l => l.id !== id))
+    deleteLeadSb(id)
   }
 
   function importLeads(newLeads: Lead[]) {
     setLeads(prev => [...prev, ...newLeads])
+    newLeads.forEach(upsertLead)
   }
 
   return (

@@ -66,6 +66,9 @@ desktop.ini
 # ── Backups y exportaciones de datos ──────────────────────
 # Evitar que exportaciones con datos de pacientes se suban
 *.sql
+# Excepción: migraciones de esquema (no contienen datos ni secretos)
+!supabase/migrations/*.sql
+!supabase/setup.sql
 *.dump
 *.bak
 *.backup
