@@ -953,7 +953,13 @@ function TabPagos({ lead }: { lead: Lead }) {
     updateLead(lead.id, { filtro_pagado: true })
     moveStage(lead.id, 'cita_blueprint')
     setConfirmingFiltro(false)
-    toast.success('✓ Consulta filtro pagada · Lead movido a 04 · Cita Blueprint')
+    toast.success('✓ Consulta filtro pagada · Lead movido a 04 · Email enviado')
+    if (supabase && lead.email) {
+      const nombre = lead.name
+      supabase.functions.invoke('notify-bienvenida-cita', {
+        body: { email: lead.email, nombre },
+      }).catch((err: unknown) => console.warn('notify-bienvenida-cita:', err))
+    }
   }
 
   function handleConfirmarPlan() {
@@ -1211,7 +1217,7 @@ function LeadPanel({
 
 // ─── Import Modal ─────────────────────────────────────────────────────────────
 
-import { isSupabaseConfigured } from '../lib/supabase'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { fetchLeadsFromSupabase } from '../lib/importLeads'
 
 type ImportStatus = 'idle' | 'loading' | 'success' | 'error'
