@@ -18,16 +18,32 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { email, nombre, htmlContent } = await req.json() as {
-      email:       string
-      nombre:      string
-      htmlContent: string
+    const { email, nombre, htmlContent, pdfBase64 } = await req.json() as {
+      email:        string
+      nombre:       string
+      htmlContent:  string
+      pdfBase64?:   string
     }
 
     if (!email || !htmlContent) {
       return new Response(JSON.stringify({ skipped: 'no_email_or_html' }), {
         status: 200, headers: { ...CORS, 'Content-Type': 'application/json' },
       })
+    }
+
+    const payload: Record<string, unknown> = {
+      sender:      { name: SENDER_NAME, email: SENDER_EMAIL },
+      to:          [{ email, name: nombre }],
+      subject:     `🔬 Tu Orden Médica de Laboratorio — Dra. Eusimary Contreras`,
+      htmlContent,
+    }
+
+    // Adjuntar PDF si fue generado correctamente
+    if (pdfBase64) {
+      payload.attachment = [{
+        content: pdfBase64,
+        name:    `Orden_Medica_${(nombre || 'Paciente').replace(/\s+/g, '_')}.pdf`,
+      }]
     }
 
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -37,12 +53,7 @@ Deno.serve(async (req: Request) => {
         'Content-Type': 'application/json',
         'Accept':       'application/json',
       },
-      body: JSON.stringify({
-        sender:      { name: SENDER_NAME, email: SENDER_EMAIL },
-        to:          [{ email, name: nombre }],
-        subject:     `🔬 Tu Orden Médica de Laboratorio — Dra. Eusimary Contreras`,
-        htmlContent,
-      }),
+      body: JSON.stringify(payload),
     })
 
     const data = await res.json()

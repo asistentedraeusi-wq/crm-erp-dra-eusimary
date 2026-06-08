@@ -1,5 +1,7 @@
 import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import type { HistoriaClinicaForm } from '../../../types/historia-clinica';
 import { EXAMENES_PARACLÍNICOS } from '../../../constants/historia-clinica';
 import { useLeads } from '../../../context/LeadsContext';
@@ -8,6 +10,38 @@ import { generarOrdenMedica, buildOrdenMedicaHTML } from '../../../lib/generarOr
 import { subirSoporteHTML } from '../../../lib/soportes';
 import SectionHeader from '../ui/SectionHeader';
 import FormField from '../ui/FormField';
+
+// Convierte HTML a PDF y devuelve base64 para adjuntar en email
+async function htmlToPdfBase64(htmlContent: string): Promise<string | null> {
+  try {
+    const container = document.createElement('div');
+    container.innerHTML = htmlContent;
+    Object.assign(container.style, {
+      position: 'absolute', left: '-9999px', top: '0',
+      width: '794px', background: '#fff',
+    });
+    document.body.appendChild(container);
+
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, logging: false });
+    document.body.removeChild(container);
+
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const imgW = 210;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    let y = 0;
+    const pageH = 297;
+    // Paginar si el contenido es más largo que una página
+    while (y < imgH) {
+      if (y > 0) pdf.addPage();
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, -y, imgW, imgH);
+      y += pageH;
+    }
+    return pdf.output('datauristring').split(',')[1];
+  } catch (err) {
+    console.warn('htmlToPdfBase64:', err);
+    return null;
+  }
+}
 
 const TEXTAREA: React.CSSProperties = {
   borderRadius: '8px', border: '1px solid #E5E7EB', padding: '10px 12px',
@@ -59,7 +93,7 @@ export default function S09_Paraclínicos({ form, set, leadId }: Props) {
       toast.warning('Orden generada pero no se guardó en Soportes — verifica el bucket "soportes" en Supabase Storage.');
     }
 
-    // ── 2. Enviar email al paciente ─────────────────────────────────────────
+    // ── 2. Generar PDF para adjuntar al email ──────────────────────────────
     if (!supabase) return;
 
     const emailPaciente = lead?.email;
@@ -68,14 +102,18 @@ export default function S09_Paraclínicos({ form, set, leadId }: Props) {
       return;
     }
 
+    toast.success('Generando PDF para enviar al paciente...');
+    const pdfBase64 = await htmlToPdfBase64(htmlContent);
+
+    // ── 3. Enviar email con PDF adjunto ────────────────────────────────────
     try {
       const { error } = await supabase.functions.invoke('notify-orden-medica', {
-        body: { email: emailPaciente, nombre, htmlContent },
+        body: { email: emailPaciente, nombre, htmlContent, pdfBase64 },
       });
       if (error) {
         toast.warning(`Email no enviado: ${error.message ?? 'error desconocido'}`);
       } else {
-        toast.success(`✓ Orden Médica enviada a ${emailPaciente}`);
+        toast.success(`✓ Orden Médica enviada a ${emailPaciente} con PDF adjunto`);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
