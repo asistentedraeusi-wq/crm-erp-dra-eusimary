@@ -7,10 +7,10 @@ import {
   Clock, Activity, CreditCard, Stethoscope,
   MoreHorizontal, Calendar, MapPin, Edit2, ArrowRight,
   Download, Database, CheckCircle2, AlertCircle, Loader2, Copy,
-  ExternalLink, Trash2, FileCode,
+  ExternalLink, Trash2, FileCode, Upload,
 } from 'lucide-react'
 import { useLeads, type Lead, type StageId } from '../context/LeadsContext'
-import { listarSoportes, eliminarSoporte, TIPO_LABELS, TIPO_COLORS, type Soporte } from '../lib/soportes'
+import { listarSoportes, eliminarSoporte, subirSoporteArchivo, TIPO_LABELS, TIPO_COLORS, type Soporte } from '../lib/soportes'
 
 // ─── Cal.com — actualizar con la URL real del evento "Segunda Cita Médica" ───
 const CAL_SEGUNDA_CITA_URL = 'https://cal.com/eusi-contreras-morales-hfytax/segunda-cita-medica'
@@ -517,10 +517,25 @@ function TabIVC() {
   )
 }
 
+const TIPOS_UPLOAD = [
+  { value: 'resultado_lab',  label: 'Resultado Lab.' },
+  { value: 'consentimiento', label: 'Consentimiento' },
+  { value: 'otro',           label: 'Documento general' },
+  { value: 'historia_clinica', label: 'Historia Clínica' },
+  { value: 'formula_medica', label: 'Fórmula Médica' },
+  { value: 'orden_medica',   label: 'Orden Médica' },
+]
+
 function TabSoportes({ lead }: { lead: Lead }) {
-  const [soportes, setSoportes]   = useState<Soporte[]>([])
-  const [loading,  setLoading]    = useState(true)
+  const [soportes, setSoportes]     = useState<Soporte[]>([])
+  const [loading,  setLoading]      = useState(true)
   const [eliminando, setEliminando] = useState<string | null>(null)
+
+  // Upload state
+  const fileRef                      = useRef<HTMLInputElement>(null)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [tipoSelected, setTipoSelected] = useState('resultado_lab')
+  const [subiendo, setSubiendo]      = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -538,6 +553,107 @@ function TabSoportes({ lead }: { lead: Lead }) {
     setEliminando(null)
   }
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    if (file) setPendingFile(file)
+    e.target.value = ''
+  }
+
+  async function handleSubir() {
+    if (!pendingFile) return
+    setSubiendo(true)
+    const nombre = pendingFile.name.replace(/\.[^/.]+$/, '')
+    const result = await subirSoporteArchivo(lead.id, nombre, tipoSelected, pendingFile)
+    if (result) {
+      const { data } = await listarSoportes(lead.id)
+      setSoportes(data ?? [])
+      toast.success('✓ Documento adjuntado')
+      setPendingFile(null)
+    } else {
+      toast.error('Error al subir el documento')
+    }
+    setSubiendo(false)
+  }
+
+  // ── Botón siempre visible para adjuntar ──────────────────────────────────
+  const uploadButton = (
+    <div style={{ marginTop: '12px' }}>
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xlsx"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+
+      {pendingFile ? (
+        <div style={{
+          background: 'rgba(18,196,154,0.07)', border: '1px solid rgba(18,196,154,0.25)',
+          borderRadius: '12px', padding: '12px',
+        }}>
+          <p style={{ fontSize: '11px', fontWeight: 700, color: '#065F46', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            📎 {pendingFile.name}
+          </p>
+          <select
+            value={tipoSelected}
+            onChange={e => setTipoSelected(e.target.value)}
+            style={{
+              width: '100%', height: '32px', borderRadius: '8px',
+              border: '1px solid #D1FAE5', background: '#fff',
+              fontSize: '11px', color: '#0D2244', padding: '0 8px',
+              marginBottom: '8px', outline: 'none',
+            }}
+          >
+            {TIPOS_UPLOAD.map(t => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button
+              onClick={handleSubir}
+              disabled={subiendo}
+              style={{
+                flex: 1, height: '32px', borderRadius: '8px', border: 'none',
+                background: '#12C49A', color: '#fff', fontSize: '11px', fontWeight: 700,
+                cursor: subiendo ? 'not-allowed' : 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', gap: '5px',
+              }}
+            >
+              {subiendo ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+              {subiendo ? 'Subiendo...' : 'Confirmar'}
+            </button>
+            <button
+              onClick={() => setPendingFile(null)}
+              disabled={subiendo}
+              style={{
+                height: '32px', padding: '0 12px', borderRadius: '8px',
+                border: '1px solid #E5E7EB', background: '#fff',
+                fontSize: '11px', color: '#6B7280', cursor: 'pointer',
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => fileRef.current?.click()}
+          style={{
+            width: '100%', height: '34px', borderRadius: '10px',
+            border: '1.5px dashed #D1D5DB', background: 'transparent',
+            fontSize: '11px', fontWeight: 600, color: '#6B7280',
+            cursor: 'pointer', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', gap: '6px', transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#12C49A'; (e.currentTarget as HTMLButtonElement).style.color = '#12C49A' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#D1D5DB'; (e.currentTarget as HTMLButtonElement).style.color = '#6B7280' }}
+        >
+          <Paperclip size={12} /> Adjuntar documento
+        </button>
+      )}
+    </div>
+  )
+
   if (loading) return (
     <div className="flex items-center justify-center h-32 text-gray-400 text-sm gap-2">
       <Loader2 size={16} className="animate-spin" /> Cargando soportes...
@@ -545,14 +661,17 @@ function TabSoportes({ lead }: { lead: Lead }) {
   )
 
   if (!soportes.length) return (
-    <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
-      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-        <Paperclip size={18} className="text-gray-400" />
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col items-center justify-center h-32 gap-3 text-center">
+        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+          <Paperclip size={18} className="text-gray-400" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-500">Sin documentos</p>
+          <p className="text-xs text-gray-400 mt-0.5">Los PDF generados aparecen aquí automáticamente</p>
+        </div>
       </div>
-      <div>
-        <p className="text-sm font-semibold text-gray-500">Sin documentos</p>
-        <p className="text-xs text-gray-400 mt-0.5">Los PDF generados aparecerán aquí automáticamente</p>
-      </div>
+      {uploadButton}
     </div>
   )
 
@@ -562,9 +681,9 @@ function TabSoportes({ lead }: { lead: Lead }) {
         {soportes.length} documento{soportes.length !== 1 ? 's' : ''}
       </p>
       {soportes.map(s => {
-        const color  = TIPO_COLORS[s.tipo] ?? '#6B7280'
-        const label  = TIPO_LABELS[s.tipo]  ?? 'Documento'
-        const fecha  = new Date(s.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
+        const color = TIPO_COLORS[s.tipo] ?? '#6B7280'
+        const label = TIPO_LABELS[s.tipo]  ?? 'Documento'
+        const fecha = new Date(s.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
         return (
           <div key={s.id} style={{
             display: 'flex', alignItems: 'center', gap: '10px',
@@ -623,6 +742,7 @@ function TabSoportes({ lead }: { lead: Lead }) {
           </div>
         )
       })}
+      {uploadButton}
     </div>
   )
 }

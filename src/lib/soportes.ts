@@ -86,6 +86,42 @@ export async function subirSoporteHTML(
   }
 }
 
+export async function subirSoporteArchivo(
+  leadId:  string,
+  nombre:  string,
+  tipo:    string,
+  archivo: File,
+): Promise<{ url: string } | null> {
+  try {
+    const client = requireClient();
+    const ext      = archivo.name.split('.').pop() ?? 'bin';
+    const slug     = nombre.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40);
+    const fileName = `${leadId}/${slug}_${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await client.storage
+      .from('soportes')
+      .upload(fileName, archivo, { contentType: archivo.type, upsert: false });
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = client.storage
+      .from('soportes')
+      .getPublicUrl(fileName);
+
+    await client.from('soportes').insert({
+      lead_id: leadId,
+      nombre,
+      tipo,
+      url:    publicUrl,
+      hc_id:  null,
+    });
+
+    return { url: publicUrl };
+  } catch {
+    return null;
+  }
+}
+
 export async function eliminarSoporte(id: string, url: string) {
   try {
     const client = requireClient();
