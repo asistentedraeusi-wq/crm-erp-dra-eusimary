@@ -711,18 +711,27 @@ function TabSoportes({ lead }: { lead: Lead }) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-              <a
-                href={s.url} target="_blank" rel="noopener noreferrer"
+              <button
+                onClick={async () => {
+                  if (s.url.endsWith('.html')) {
+                    // Renderizar HTML en ventana nueva (Supabase Storage no sirve HTML renderizado)
+                    const res = await fetch(s.url)
+                    const html = await res.text()
+                    const win = window.open('', '_blank', 'width=900,height=960')
+                    if (win) { win.document.write(html); win.document.close() }
+                  } else {
+                    window.open(s.url, '_blank', 'noopener,noreferrer')
+                  }
+                }}
                 style={{
                   width: '28px', height: '28px', borderRadius: '7px',
                   background: color + '18', border: 'none', display: 'flex',
                   alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                  textDecoration: 'none',
                 }}
                 title="Abrir documento"
               >
                 <ExternalLink size={13} style={{ color }} />
-              </a>
+              </button>
               <button
                 onClick={() => handleEliminar(s)}
                 disabled={eliminando === s.id}
