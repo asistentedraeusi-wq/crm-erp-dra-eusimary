@@ -49,6 +49,7 @@ export interface Lead {
   filtro_pagado?:   boolean
   pago_confirmado?: boolean
   plan_inicio?:     string
+  hc_id?:           string
   seguimiento?:     SeguimientoSemanal[]
 }
 
@@ -113,6 +114,7 @@ function rowToLead(row: DbRow): Lead {
     filtro_pagado:   (row.filtro_pagado as boolean) ?? undefined,
     pago_confirmado: (row.pago_confirmado as boolean) ?? undefined,
     plan_inicio:     (row.plan_inicio as string) ?? undefined,
+    hc_id:           (row.hc_id as string) ?? undefined,
     seguimiento:     (row.seguimiento as SeguimientoSemanal[]) ?? undefined,
   }
 }
@@ -138,6 +140,7 @@ function leadToRow(lead: Lead) {
     filtro_pagado:   lead.filtro_pagado ?? null,
     pago_confirmado: lead.pago_confirmado ?? null,
     plan_inicio:     lead.plan_inicio ?? null,
+    hc_id:           lead.hc_id ?? null,
     seguimiento:     lead.seguimiento ?? null,
     updated_at:      new Date().toISOString(),
   }

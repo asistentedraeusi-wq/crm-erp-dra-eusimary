@@ -16,7 +16,7 @@ export default function HistoriaClinicaPage() {
 
   const esNueva = !id || id === 'nueva';
 
-  const state = location.state as { leadPrefill?: Partial<HCForm>; leadId?: string } | null;
+  const state = location.state as { leadPrefill?: Partial<HCForm>; leadId?: string; modoEdicion?: boolean } | null;
   const leadPrefill = state?.leadPrefill;
   const leadId = state?.leadId;
 
@@ -28,11 +28,13 @@ export default function HistoriaClinicaPage() {
           setError('Historia clínica no encontrada.');
         } else {
           setDatos(data.datos);
+          // Si viene del Pipeline para la 2ª cita, entrar directo en edición
+          if (state?.modoEdicion) setModoEdicion(true);
         }
         setLoading(false);
       });
     }
-  }, [id, esNueva]);
+  }, [id, esNueva]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Al entrar en modo edición, hacer scroll al inicio
   function activarEdicion() {

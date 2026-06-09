@@ -66,7 +66,7 @@ interface Props {
 
 export default function HistoriaClinicaForm({ initialData, readOnly = false, leadId, hcId }: Props) {
   const navigate = useNavigate();
-  const { moveStage } = useLeads();
+  const { moveStage, updateLead } = useLeads();
   const [form, setForm] = useState<HCForm>({ ...EMPTY, ...initialData });
   const [guardando, setGuardando] = useState(false);
   const esActualizacion = Boolean(hcId);
@@ -108,7 +108,10 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
       return;
     }
     toast.success('Historia clínica de la 1ª cita guardada correctamente.');
-    if (leadId) moveStage(leadId, 'paraclínicos');
+    if (leadId) {
+      moveStage(leadId, 'paraclínicos');
+      updateLead(leadId, { hc_id: data.id }); // vincular HC al lead para abrir en 2ª cita
+    }
     navigate(`/historia-clinica/${data.id}`);
   }
 

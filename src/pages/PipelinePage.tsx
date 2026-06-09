@@ -775,8 +775,15 @@ function TabHistoriaClinica({ lead }: { lead: Lead }) {
   const nombres   = partes.slice(0, Math.ceil(partes.length / 2)).join(' ')
   const apellidos = partes.slice(Math.ceil(partes.length / 2)).join(' ')
   const esParaclinicos = lead.stage === 'paraclínicos'
+  const tieneHC        = Boolean(lead.hc_id)
 
   function abrirFormulario() {
+    // Si ya existe una HC guardada → abrir en modo edición con todos los datos
+    if (lead.hc_id) {
+      navigate(`/historia-clinica/${lead.hc_id}`, { state: { leadId: lead.id, modoEdicion: true } })
+      return
+    }
+    // Primera vez → crear nueva HC pre-rellenada con datos del lead
     navigate('/blueprints', {
       state: {
         leadId: lead.id,
@@ -833,20 +840,20 @@ function TabHistoriaClinica({ lead }: { lead: Lead }) {
         <div>
           <p className="text-sm font-semibold text-gray-600">Historia Clínica BluePrint</p>
           <p className="text-xs text-gray-400 mt-0.5">
-            {esParaclinicos ? 'Crear o continuar documento clínico' : 'Crear el documento clínico para este paciente'}
+            {tieneHC ? 'Continuar con datos de la 1ª cita guardados' : 'Crear el documento clínico para este paciente'}
           </p>
         </div>
         <button
           onClick={abrirFormulario}
           style={{
-            background: '#12C49A', color: '#fff', border: 'none',
+            background: tieneHC ? '#0D2244' : '#12C49A', color: '#fff', border: 'none',
             borderRadius: '10px', padding: '10px 24px',
             fontSize: '13px', fontWeight: '700', cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(18,196,154,0.35)',
+            boxShadow: tieneHC ? '0 4px 14px rgba(13,34,68,0.35)' : '0 4px 14px rgba(18,196,154,0.35)',
             display: 'flex', alignItems: 'center', gap: '6px',
           }}
         >
-          <FileText size={14} /> {esParaclinicos ? 'Abrir Historia Clínica' : 'Nueva Historia Clínica'}
+          <FileText size={14} /> {tieneHC ? 'Abrir Historia Clínica' : 'Nueva Historia Clínica'}
         </button>
       </div>
     </div>
