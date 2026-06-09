@@ -13,6 +13,7 @@ import S00_HeaderConsulta from './sections/S00_HeaderConsulta';
 import S00b_HeaderSegundaCita from './sections/S00b_HeaderSegundaCita';
 import S01_Identificacion from './sections/S01_Identificacion';
 import S02_Consulta from './sections/S02_Consulta';
+import S02b_Consulta2 from './sections/S02b_Consulta2';
 import S03_Antecedentes from './sections/S03_Antecedentes';
 import S04_Habitos from './sections/S04_Habitos';
 import S05_Gineco from './sections/S05_Gineco';
@@ -242,6 +243,9 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
         {/* ── 2ª CITA ─────────────────────────────────────────── */}
         <S00b_HeaderSegundaCita form={form} set={set as (k: keyof HCForm, v: string) => void} readOnly={readOnly} />
 
+        <div style={SECTION_STYLE}>
+          <S02b_Consulta2 form={form} set={set as (k: keyof HCForm, v: string) => void} readOnly={readOnly} />
+        </div>
         <div style={SECTION_STYLE}>
           <S09b_ResultadosLab form={form} set={set} readOnly={readOnly} />
         </div>

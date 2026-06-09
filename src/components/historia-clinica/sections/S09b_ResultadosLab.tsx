@@ -99,7 +99,7 @@ export default function S09b_ResultadosLab({ form, set, readOnly = false }: Prop
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-      <SectionHeader number={11} title="Resultados de Laboratorio" />
+      <SectionHeader number={12} title="Resultados de Laboratorio" />
 
       {/* Contexto 2da cita */}
       <div style={{

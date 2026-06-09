@@ -1,5 +1,4 @@
 import type { HistoriaClinicaForm } from '../../../types/historia-clinica';
-import { TIPOS_CONSULTA } from '../../../constants/historia-clinica';
 import FormField from '../ui/FormField';
 import { Stethoscope } from 'lucide-react';
 
@@ -47,7 +46,7 @@ export default function S00b_HeaderSegundaCita({ form, set, readOnly = false }: 
         borderLeft: '4px solid #D4AF37',
         boxShadow: '0 1px 6px rgba(212,175,55,0.12)',
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
 
           {/* Fecha 2ª cita */}
           <FormField label="Fecha 2ª Cita" required>
@@ -58,30 +57,6 @@ export default function S00b_HeaderSegundaCita({ form, set, readOnly = false }: 
               readOnly={readOnly}
               onChange={e => !readOnly && set('fecha_2cita', e.target.value)}
             />
-          </FormField>
-
-          {/* Tipo de consulta 2ª cita */}
-          <FormField label="Tipo de consulta">
-            {readOnly ? (
-              <div style={{
-                ...INPUT,
-                display: 'flex', alignItems: 'center',
-                background: '#FEFCE8',
-                color: form.tipo_2cita ? '#111827' : '#9CA3AF',
-                border: '1px solid #F3D77A',
-              }}>
-                {form.tipo_2cita || 'No especificado'}
-              </div>
-            ) : (
-              <select
-                style={{ ...INPUT, cursor: 'pointer' }}
-                value={form.tipo_2cita}
-                onChange={e => set('tipo_2cita', e.target.value)}
-              >
-                <option value="">Seleccionar...</option>
-                {TIPOS_CONSULTA.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            )}
           </FormField>
 
           {/* No. Historia Clínica — read-only, ya identificado en S00 */}

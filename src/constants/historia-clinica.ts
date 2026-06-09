@@ -100,6 +100,7 @@ export const TIPOS_CONSULTA = [
   'Control Mes 3',
   'Consulta de Urgencia',
   'Control por laboratorio',
+  '2da Cita — Lectura Paraclínicos y Definición Clínica',
 ] as const;
 
 export const CIE10_FRECUENTES = [
