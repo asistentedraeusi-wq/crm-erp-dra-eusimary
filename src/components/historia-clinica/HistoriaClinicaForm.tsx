@@ -104,7 +104,8 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
     setGuardando(true);
     const { data, error } = await crearHistoriaClinica(form);
     if (error || !data) {
-      toast.error('Error al guardar. Verifica la conexion a Supabase.');
+      console.error('[HC] Error al crear HC:', error?.message);
+      toast.error(`Error al guardar: ${error?.message ?? 'Sin conexión a Supabase'}`);
       setGuardando(false);
       return;
     }
@@ -140,7 +141,8 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
       // HC existente — actualizar
       const { data, error } = await actualizarHistoriaClinica(hcId, form);
       if (error || !data) {
-        toast.error('Error al guardar. Verifica la conexion a Supabase.');
+        console.error('[HC] Error al actualizar HC:', error?.message);
+        toast.error(`Error al guardar: ${error?.message ?? 'Sin conexión a Supabase'}`);
         setGuardando(false);
         return;
       }
@@ -166,7 +168,8 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
       }
       const { data, error } = await crearHistoriaClinica(form);
       if (error || !data) {
-        toast.error('Error al guardar. Verifica la conexion a Supabase.');
+        console.error('[HC] Error al crear HC (2ª cita):', error?.message);
+        toast.error(`Error al guardar: ${error?.message ?? 'Sin conexión a Supabase'}`);
         setGuardando(false);
         return;
       }
