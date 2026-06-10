@@ -296,10 +296,11 @@ ${sectionTitle('✦','Consentimientos Informados — 2ª Cita','#D4AF37')}
 }
 
 interface GenOpts {
-  leadId?: string;
-  hcId?:   string;
-  onSaved?: (url: string) => void;
-  onError?: () => void;
+  leadId?:    string;
+  hcId?:      string;
+  onSaved?:   (url: string) => void;
+  onError?:   () => void;
+  silencioso?: boolean; // true = solo guarda en Soportes, no abre ventana de impresión
 }
 
 export async function generarHistoriaClinicaPDF(
@@ -308,17 +309,19 @@ export async function generarHistoriaClinicaPDF(
 ): Promise<void> {
   const html = buildHistoriaClinicaHTML(form);
 
-  // Abrir ventana de impresión de inmediato (no bloquear por la subida)
-  const win = window.open('', '_blank', 'width=960,height=1200');
-  if (!win) {
-    alert('Activa las ventanas emergentes en tu navegador para generar el PDF.');
-    return;
+  // Abrir ventana de impresión solo si no es modo silencioso
+  if (!opts.silencioso) {
+    const win = window.open('', '_blank', 'width=960,height=1200');
+    if (!win) {
+      alert('Activa las ventanas emergentes en tu navegador para generar el PDF.');
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+    win.onload = () => { win.focus(); win.print(); };
   }
-  win.document.write(html);
-  win.document.close();
-  win.onload = () => { win.focus(); win.print(); };
 
-  // Subida paralela a Soportes si hay leadId
+  // Guardar en Soportes si hay leadId (manual o automático)
   if (opts.leadId) {
     const nombreDoc = `Historia Clínica ${form.num_hc || form.cc || 'Paciente'}`;
     const resultado = await subirSoporteHTML(

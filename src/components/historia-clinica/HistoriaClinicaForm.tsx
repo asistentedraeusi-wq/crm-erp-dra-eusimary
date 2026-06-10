@@ -111,7 +111,15 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
     toast.success('Historia clínica de la 1ª cita guardada correctamente.');
     if (leadId) {
       moveStage(leadId, 'paraclínicos');
-      updateLead(leadId, { hc_id: data.id }); // vincular HC al lead para abrir en 2ª cita
+      updateLead(leadId, { hc_id: data.id });
+      // Guardar copia automática en Soportes (cumplimiento Res. 1995/1999)
+      generarHistoriaClinicaPDF(form, {
+        leadId,
+        hcId: data.id,
+        silencioso: true,
+        onSaved: () => toast.info('Copia de HC guardada en Soportes.', { duration: 3000 }),
+        onError: () => toast.warning('HC guardada. Verifica el bucket "soportes" en Supabase.'),
+      });
     }
     navigate(`/historia-clinica/${data.id}`);
   }
@@ -137,7 +145,17 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
         return;
       }
       toast.success('Historia clínica guardada con los datos de la 2ª cita.');
-      if (leadId) moveStage(leadId, 'pendiente_inicio');
+      if (leadId) {
+        moveStage(leadId, 'pendiente_inicio');
+        // Actualizar copia en Soportes con datos completos de 1ª + 2ª cita
+        generarHistoriaClinicaPDF(form, {
+          leadId,
+          hcId: hcId ?? data.id,
+          silencioso: true,
+          onSaved: () => toast.info('HC completa guardada en Soportes.', { duration: 3000 }),
+          onError: () => toast.warning('HC guardada. Verifica el bucket "soportes" en Supabase.'),
+        });
+      }
       navigate(`/historia-clinica/${data.id}`);
     } else {
       // HC nueva — crear con todos los datos (incluyendo 2ª cita)
@@ -153,7 +171,16 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
         return;
       }
       toast.success('Historia clínica guardada con datos de 1ª y 2ª cita.');
-      if (leadId) moveStage(leadId, 'pendiente_inicio');
+      if (leadId) {
+        moveStage(leadId, 'pendiente_inicio');
+        generarHistoriaClinicaPDF(form, {
+          leadId,
+          hcId: data.id,
+          silencioso: true,
+          onSaved: () => toast.info('HC completa guardada en Soportes.', { duration: 3000 }),
+          onError: () => toast.warning('HC guardada. Verifica el bucket "soportes" en Supabase.'),
+        });
+      }
       navigate(`/historia-clinica/${data.id}`);
     }
   }
