@@ -200,11 +200,17 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function init() {
       // Primera vez en este navegador: migrar localStorage → Supabase
+      // SOLO si Supabase está vacío — evita sobreescribir datos correctos
+      // con caché desactualizado de otro dispositivo
       if (!localStorage.getItem(MIGRATED_KEY)) {
-        const localLeads = loadLeadsLocal()
-        if (localLeads.length > 0) {
-          await Promise.all(localLeads.map(upsertLead))
-          toast.success(`✓ ${localLeads.length} leads sincronizados con la nube`)
+        const sbCheck = await fetchAllLeads()
+        if (sbCheck !== null && sbCheck.length === 0) {
+          // Supabase vacío → subir datos locales (primer usuario que configura)
+          const localLeads = loadLeadsLocal()
+          if (localLeads.length > 0) {
+            await Promise.all(localLeads.map(upsertLead))
+            toast.success(`✓ ${localLeads.length} leads sincronizados con la nube`)
+          }
         }
         localStorage.setItem(MIGRATED_KEY, '1')
       }
@@ -232,7 +238,13 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         { event: '*', schema: 'public', table: 'crm_leads' },
         payload => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const incoming = rowToLead(payload.new as DbRow)
+            const row = payload.new as DbRow
+            // Si el lead fue soft-deleted, quitarlo de la vista
+            if (row.deleted_at) {
+              setLeads(prev => prev.filter(l => l.id !== row.id))
+              return
+            }
+            const incoming = rowToLead(row)
             setLeads(prev => {
               const exists = prev.some(l => l.id === incoming.id)
               return exists
