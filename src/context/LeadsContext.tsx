@@ -151,6 +151,7 @@ async function fetchAllLeads(): Promise<Lead[] | null> {
   const { data, error } = await supabase
     .from('crm_leads')
     .select('*')
+    .is('deleted_at', null)
     .order('created_at', { ascending: true })
   if (error) { console.warn('crm_leads fetch:', error.message); return null }
   return (data ?? []).map(row => rowToLead(row as DbRow))
