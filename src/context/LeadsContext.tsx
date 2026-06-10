@@ -148,12 +148,22 @@ function leadToRow(lead: Lead) {
 
 async function fetchAllLeads(): Promise<Lead[] | null> {
   if (!supabase) return null
+  // Intentar con filtro deleted_at (requiere migración 004)
   const { data, error } = await supabase
     .from('crm_leads')
     .select('*')
     .is('deleted_at', null)
     .order('created_at', { ascending: true })
-  if (error) { console.warn('crm_leads fetch:', error.message); return null }
+  if (error) {
+    console.warn('crm_leads fetch (con filtro):', error.message)
+    // Fallback sin filtro si la columna deleted_at no existe aún
+    const { data: fallback, error: err2 } = await supabase
+      .from('crm_leads')
+      .select('*')
+      .order('created_at', { ascending: true })
+    if (err2) { console.warn('crm_leads fetch (fallback):', err2.message); return null }
+    return (fallback ?? []).map(row => rowToLead(row as DbRow))
+  }
   return (data ?? []).map(row => rowToLead(row as DbRow))
 }
 
