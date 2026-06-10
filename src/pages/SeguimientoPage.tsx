@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { Activity, ChevronRight, User } from 'lucide-react'
+import { Activity, ChevronRight, User, Save } from 'lucide-react'
+import { toast } from 'sonner'
 import { useLeads, type Lead, type SeguimientoSemanal } from '../context/LeadsContext'
+import { guardarControlSeguimiento } from '../lib/generarSeguimientoPDF'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -92,6 +94,7 @@ function SemanaCard({
   updateSemana: (n: number, patch: Partial<SeguimientoSemanal>) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [guardando, setGuardando] = useState(false)
   const sem      = lead.seguimiento?.find(s => s.semana === semana) ?? { semana }
   const isCtrl   = [4, 8, 12].includes(semana)
   const isActual = semana === semActual
@@ -199,6 +202,35 @@ function SemanaCard({
               placeholder="Observaciones de la semana..."
             />
           </div>
+
+          {/* Botón guardar registro en Soportes */}
+          {done && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '4px' }}>
+              <button
+                type="button"
+                disabled={guardando}
+                onClick={async () => {
+                  setGuardando(true)
+                  const ok = await guardarControlSeguimiento(lead, semana, sem)
+                  if (ok) toast.success(`Semana ${semana} guardada en Soportes.`, { duration: 3000 })
+                  else    toast.warning(`No se pudo guardar en Soportes — verifica el bucket.`)
+                  setGuardando(false)
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '7px 14px', borderRadius: '8px',
+                  border: `1px solid ${isCtrl ? '#D4AF37' : '#12C49A'}`,
+                  background: '#fff', cursor: guardando ? 'not-allowed' : 'pointer',
+                  fontSize: '12px', fontWeight: 700,
+                  color: isCtrl ? '#92400E' : '#0A3D2E',
+                  opacity: guardando ? 0.7 : 1,
+                }}
+              >
+                <Save size={13} />
+                {guardando ? 'Guardando...' : isCtrl ? 'Guardar Control Médico' : 'Guardar Registro'}
+              </button>
+            </div>
+          )}
 
           {/* Control médico */}
           {isCtrl && (
