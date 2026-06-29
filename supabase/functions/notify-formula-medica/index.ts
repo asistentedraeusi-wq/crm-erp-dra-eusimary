@@ -6,7 +6,18 @@ const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY') ?? ''
 const SENDER_EMAIL  = 'asistente.draeusi@gmail.com'
 const SENDER_NAME   = 'Dra. Eusimary Contreras'
 
+const CORS = {
+  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
 Deno.serve(async (req: Request) => {
+  // Preflight CORS — obligatorio o el browser bloquea la llamada real
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { status: 200, headers: CORS })
+  }
+
   try {
     const { email, nombre, htmlContent } = await req.json() as {
       email:       string
@@ -16,7 +27,7 @@ Deno.serve(async (req: Request) => {
 
     if (!email || !htmlContent) {
       return new Response(JSON.stringify({ skipped: 'no_email_or_html' }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
+        status: 200, headers: { ...CORS, 'Content-Type': 'application/json' },
       })
     }
 
@@ -40,12 +51,12 @@ Deno.serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({ ok: res.ok, status: res.status }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } }
     )
   } catch (err) {
     console.error('notify-formula-medica error:', err)
     return new Response(JSON.stringify({ error: 'internal_error' }), {
-      status: 500, headers: { 'Content-Type': 'application/json' },
+      status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
     })
   }
 })
