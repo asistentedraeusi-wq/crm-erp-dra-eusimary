@@ -325,7 +325,7 @@ function TabPerfilActions({ lead }: { lead: Lead }) {
     }
     setEnviando(true)
     try {
-      const { error } = await supabase.functions.invoke('send-cita-link', {
+      const { error } = await supabase.functions.invoke('smooth-action', {
         body: { email: lead.email, nombre: lead.name, tipo: cita.id, calUrl: cita.url },
       })
       if (error) throw error
