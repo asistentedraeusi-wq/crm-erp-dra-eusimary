@@ -1532,7 +1532,7 @@ function LeadPanel({
 // ─── Import Modal ─────────────────────────────────────────────────────────────
 
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
-import { fetchLeadsFromSupabase } from '../lib/importLeads'
+import { fetchLeadsFromSupabase, type SkippedLead } from '../lib/importLeads'
 
 type ImportStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -1540,7 +1540,7 @@ function ImportLeadsModal({ onClose }: { onClose: () => void }) {
   const { leads, importLeads } = useLeads()
   const [status,        setStatus]        = useState<ImportStatus>('idle')
   const [importedCount, setImportedCount] = useState(0)
-  const [skippedCount,  setSkippedCount]  = useState(0)
+  const [skippedList,   setSkippedList]   = useState<SkippedLead[]>([])
   const [errorMsg,      setErrorMsg]      = useState('')
 
   async function handleImport() {
@@ -1551,7 +1551,7 @@ function ImportLeadsModal({ onClose }: { onClose: () => void }) {
         importLeads(result.imported)
       }
       setImportedCount(result.imported.length)
-      setSkippedCount(result.skipped)
+      setSkippedList(result.skippedLeads)
       setStatus('success')
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Error desconocido')
@@ -1681,26 +1681,50 @@ function ImportLeadsModal({ onClose }: { onClose: () => void }) {
             )}
 
             {status === 'success' && (
-              <div
-                className="flex items-start rounded-xl mt-4"
-                style={{ padding: '14px', gap: '10px', background: 'rgba(18,196,154,0.07)', border: '1px solid rgba(18,196,154,0.25)' }}
-              >
-                <CheckCircle2 size={15} className="text-[#12C49A] flex-shrink-0 mt-0.5" />
-                <div style={{ gap: '6px' }} className="flex flex-col">
-                  <p className="text-[12px] font-bold text-[#0D2244]">Importación completada</p>
-                  {importedCount > 0 ? (
-                    <p className="text-[11px] text-gray-600">
-                      <span className="font-bold text-[#12C49A]">{importedCount} leads nuevos</span> agregados a la columna
-                      <strong> 01 · Nuevo Lead</strong> con código Lead No. asignado.
-                      {skippedCount > 0 && <span className="text-gray-400"> · {skippedCount} omitidos (ya existían).</span>}
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-gray-500">
-                      El tablero ya está al día.
-                      {skippedCount > 0 && ` ${skippedCount} leads ya existían en el sistema.`}
-                    </p>
-                  )}
+              <div className="flex flex-col mt-4" style={{ gap: '10px' }}>
+                <div
+                  className="flex items-start rounded-xl"
+                  style={{ padding: '14px', gap: '10px', background: 'rgba(18,196,154,0.07)', border: '1px solid rgba(18,196,154,0.25)' }}
+                >
+                  <CheckCircle2 size={15} className="text-[#12C49A] flex-shrink-0 mt-0.5" />
+                  <div style={{ gap: '4px' }} className="flex flex-col">
+                    <p className="text-[12px] font-bold text-[#0D2244]">Importación completada</p>
+                    {importedCount > 0 ? (
+                      <p className="text-[11px] text-gray-600">
+                        <span className="font-bold text-[#12C49A]">{importedCount} leads nuevos</span> agregados a <strong>01 · Nuevo Lead</strong>.
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-gray-500">No hay leads nuevos para importar.</p>
+                    )}
+                  </div>
                 </div>
+
+                {skippedList.length > 0 && (
+                  <div className="rounded-xl" style={{ border: '1px solid #FDE68A', background: '#FFFBEB', overflow: 'hidden' }}>
+                    <div className="flex items-center" style={{ padding: '9px 14px', borderBottom: '1px solid #FDE68A', gap: '6px' }}>
+                      <AlertCircle size={12} className="text-amber-500 flex-shrink-0" />
+                      <p className="text-[11px] font-bold text-amber-700">
+                        {skippedList.length} omitido{skippedList.length > 1 ? 's' : ''} — ya existen en el CRM
+                      </p>
+                    </div>
+                    <div className="flex flex-col" style={{ padding: '8px 14px', gap: '6px' }}>
+                      {skippedList.map((s, i) => (
+                        <div key={i} className="flex items-start justify-between" style={{ gap: '8px' }}>
+                          <div className="flex flex-col" style={{ gap: '1px' }}>
+                            <span className="text-[11px] font-semibold text-[#0D2244]">{s.nombre}</span>
+                            <span className="text-[10px] text-gray-400">{s.email || s.celular}</span>
+                          </div>
+                          <span
+                            className="text-[9px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
+                            style={{ background: '#FEF3C7', color: '#92400E', marginTop: '2px' }}
+                          >
+                            {s.reason === 'email' ? 'email repetido' : 'teléfono repetido'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

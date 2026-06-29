@@ -44,9 +44,17 @@ function mapRow(row: SupabaseLeadRow, assignedId: string): Lead {
   }
 }
 
+export interface SkippedLead {
+  nombre: string
+  email: string
+  celular: string
+  reason: 'email' | 'phone'
+}
+
 export interface ImportResult {
   imported: Lead[]
   skipped: number
+  skippedLeads: SkippedLead[]
   total: number
 }
 
@@ -80,18 +88,24 @@ export async function fetchLeadsFromSupabase(existingLeads: Lead[]): Promise<Imp
   }, 0)
 
   let skipped = 0
+  const skippedLeads: SkippedLead[] = []
   const imported: Lead[] = []
 
   for (const row of rows) {
     const emailNorm = (row.email ?? '').trim().toLowerCase()
     const phoneNorm = (row.celular ?? '').replace(/\s+/g, '')
 
-    const isDuplicate =
-      (emailNorm && existingEmails.has(emailNorm)) ||
-      (phoneNorm && existingPhones.has(phoneNorm))
+    const byEmail = emailNorm && existingEmails.has(emailNorm)
+    const byPhone = phoneNorm && existingPhones.has(phoneNorm)
 
-    if (isDuplicate) {
+    if (byEmail || byPhone) {
       skipped++
+      skippedLeads.push({
+        nombre:  row.nombre  ?? 'Sin nombre',
+        email:   row.email   ?? '',
+        celular: row.celular ?? '',
+        reason:  byEmail ? 'email' : 'phone',
+      })
       continue
     }
 
@@ -103,5 +117,5 @@ export async function fetchLeadsFromSupabase(existingLeads: Lead[]): Promise<Imp
     if (phoneNorm) existingPhones.add(phoneNorm)
   }
 
-  return { imported, skipped, total: rows.length }
+  return { imported, skipped, skippedLeads, total: rows.length }
 }
