@@ -108,20 +108,45 @@ export default function DashboardPage() {
   const [period, setPeriod] = useState<Period>('mes')
   const { leads } = useLeads()
 
-  // KPIs calculados en vivo desde el estado global del Pipeline
-  const citasStages = new Set(['cita_agendada', 'cita_blueprint', 'segunda_cita'])
-  const totalLeads      = leads.length
-  const pacientesActivos = leads.filter(l => l.stage === 'activo').length
-  const citasMedicas    = leads.filter(l => citasStages.has(l.stage)).length
-  const planesVendidos  = leads.filter(l => l.plan !== undefined).length
-  const planS1          = leads.filter(l => l.plan === 'S1').length
-  const planS2          = leads.filter(l => l.plan === 'S2').length
-  const referidos       = leads.filter(l => l.source === 'Referido' || l.tags.includes('Referido')).length
-  const conversion      = totalLeads > 0
-    ? Math.round((leads.filter(l => l.stage === 'activo' || l.stage === 'renovacion').length / totalLeads) * 100)
-    : 0
-  const filtrosPagados  = leads.filter(l => l.filtro_pagado).length
-  const valorCOP        = planS1 * 500_000 + planS2 * 250_000 + filtrosPagados * 70_000
+  // Orden de etapas para comparaciones de progreso
+  const STAGE_IDX: Record<string, number> = {
+    nuevo: 0, contactado: 1, cita_agendada: 2, cita_blueprint: 3,
+    'paraclínicos': 4, segunda_cita: 5, pendiente_inicio: 6,
+    activo: 7, renovacion: 8, no_renueva: 9, leads_nutrir: 10,
+  }
+  const excluidos = new Set(['no_renueva', 'leads_nutrir'])
+
+  const totalLeads = leads.length
+
+  // Pacientes activos: cualquier lead en proceso de atención (desde 1ª cita en adelante)
+  const pacientesActivos = leads.filter(l =>
+    (STAGE_IDX[l.stage] ?? 0) >= STAGE_IDX['cita_blueprint'] && !excluidos.has(l.stage)
+  ).length
+
+  // Citas médicas: total de consultas realizadas (1ª cita + 2ª cita se cuentan por separado)
+  const en1eraCita  = leads.filter(l => (STAGE_IDX[l.stage] ?? 0) >= STAGE_IDX['cita_blueprint'] && !excluidos.has(l.stage)).length
+  const en2daCita   = leads.filter(l => (STAGE_IDX[l.stage] ?? 0) >= STAGE_IDX['segunda_cita']   && !excluidos.has(l.stage)).length
+  const citasMedicas = en1eraCita + en2daCita
+
+  // Planes vendidos: leads que han confirmado pago (filtro_pagado o pago_confirmado)
+  const planesVendidos = leads.filter(l => l.filtro_pagado || l.pago_confirmado).length
+
+  // Plan S1 / S2 asignados explícitamente
+  const planS1 = leads.filter(l => l.plan === 'S1').length
+  const planS2 = leads.filter(l => l.plan === 'S2').length
+
+  // Referidos: por source o fuente o tag
+  const referidos = leads.filter(l =>
+    ['referido', 'referral'].includes((l.source ?? l.fuente ?? '').toLowerCase()) ||
+    l.tags.includes('Referido')
+  ).length
+
+  // Conversión: leads que completaron al menos la 1ª cita / total
+  const conversion = totalLeads > 0 ? Math.round((pacientesActivos / totalLeads) * 100) : 0
+
+  // Ingresos: filtro_pagado × $70K + plan S1 × $500K + plan S2 × $250K
+  const filtrosPagados = leads.filter(l => l.filtro_pagado).length
+  const valorCOP = filtrosPagados * 70_000 + planS1 * 500_000 + planS2 * 250_000
 
   const live = { leads: totalLeads, pacientes: pacientesActivos, citas: citasMedicas, conversion, planS1, planS2, referidos, planesVendidos, valorCOP }
   const d = period === 'mes' ? live : ACUMULADO
