@@ -10,7 +10,7 @@ type Period = 'mes' | 'acumulado'
 
 // Acumulado histórico — se actualiza manualmente al cerrar cada mes
 const ACUMULADO = {
-  leads: 0, pacientes: 0, citas: 0,
+  leads: 0, leadsActivos: 0, pacientes: 0, citas: 0,
   conversion: 0, planS1: 0, planS2: 0,
   referidos: 0, planesVendidos: 0,
   valorCOP: 0,
@@ -118,37 +118,40 @@ export default function DashboardPage() {
 
   const totalLeads = leads.length
 
-  // Pacientes activos: cualquier lead en proceso de atención (desde 1ª cita en adelante)
-  const pacientesActivos = leads.filter(l =>
-    (STAGE_IDX[l.stage] ?? 0) >= STAGE_IDX['cita_blueprint'] && !excluidos.has(l.stage)
+  // Leads activos: en proceso de atención (columnas 03 → 07)
+  const leadsActivos = leads.filter(l =>
+    ['cita_agendada', 'cita_blueprint', 'paraclínicos', 'segunda_cita', 'pendiente_inicio'].includes(l.stage)
   ).length
 
-  // Citas médicas: total de consultas realizadas (1ª cita + 2ª cita se cuentan por separado)
+  // Pacientes activos: compraron un plan S1 o S2 (columnas 08 → 09)
+  const pacientesActivos = leads.filter(l => l.stage === 'activo' || l.stage === 'renovacion').length
+
+  // Citas médicas: total de consultas realizadas (1ª + 2ª se cuentan por separado)
   const en1eraCita  = leads.filter(l => (STAGE_IDX[l.stage] ?? 0) >= STAGE_IDX['cita_blueprint'] && !excluidos.has(l.stage)).length
   const en2daCita   = leads.filter(l => (STAGE_IDX[l.stage] ?? 0) >= STAGE_IDX['segunda_cita']   && !excluidos.has(l.stage)).length
   const citasMedicas = en1eraCita + en2daCita
 
-  // Planes vendidos: leads que han confirmado pago (filtro_pagado o pago_confirmado)
+  // Planes vendidos: leads con pago confirmado
   const planesVendidos = leads.filter(l => l.filtro_pagado || l.pago_confirmado).length
 
   // Plan S1 / S2 asignados explícitamente
   const planS1 = leads.filter(l => l.plan === 'S1').length
   const planS2 = leads.filter(l => l.plan === 'S2').length
 
-  // Referidos: por source o fuente o tag
+  // Referidos: por source, fuente o tag
   const referidos = leads.filter(l =>
     ['referido', 'referral'].includes((l.source ?? l.fuente ?? '').toLowerCase()) ||
     l.tags.includes('Referido')
   ).length
 
-  // Conversión: leads que completaron al menos la 1ª cita / total
+  // Conversión: leads que compraron un plan / total
   const conversion = totalLeads > 0 ? Math.round((pacientesActivos / totalLeads) * 100) : 0
 
   // Ingresos: filtro_pagado × $70K + plan S1 × $500K + plan S2 × $250K
   const filtrosPagados = leads.filter(l => l.filtro_pagado).length
   const valorCOP = filtrosPagados * 70_000 + planS1 * 500_000 + planS2 * 250_000
 
-  const live = { leads: totalLeads, pacientes: pacientesActivos, citas: citasMedicas, conversion, planS1, planS2, referidos, planesVendidos, valorCOP }
+  const live = { leads: totalLeads, leadsActivos, pacientes: pacientesActivos, citas: citasMedicas, conversion, planS1, planS2, referidos, planesVendidos, valorCOP }
   const d = period === 'mes' ? live : ACUMULADO
 
   return (
@@ -203,16 +206,17 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Grid 4 × 2 KPIs ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          <KpiCard icon={<Users size={20} />}         label="Total Leads"              value={d.leads}            sub="Ingresaron al sistema"  trend={12} floatClass="icon-float"   cardDelay="d-0" />
-          <KpiCard icon={<UserCheck size={20} />}     label="Pacientes Activos"        value={d.pacientes}        sub="En seguimiento"         accent="#0D2244" trend={8} floatClass="icon-float-2" cardDelay="d-1" />
-          <KpiCard icon={<CalendarCheck size={20} />} label="Citas Médicas"            value={d.citas}            sub="Agendadas y realizadas"  accent="#D4AF5A" trend={5} floatClass="icon-float-3" cardDelay="d-2" />
-          <KpiCard icon={<ShoppingBag size={20} />}   label="Planes Vendidos"          value={d.planesVendidos}   sub="Nuevos programas"       trend={18}        floatClass="icon-float-4" cardDelay="d-3" />
-          <KpiCard icon={<Award size={20} />}         label="Plan S1 — Control Met."   value={d.planS1}           sub="Pacientes activos S1"   accent="#7C3AED"  floatClass="icon-float-5" cardDelay="d-4" />
-          <KpiCard icon={<Activity size={20} />}      label="Plan S2 — Bienestar Int." value={d.planS2}           sub="Pacientes activos S2"   accent="#0D2244"  floatClass="icon-float-6" cardDelay="d-5" />
-          <KpiCard icon={<Share2 size={20} />}        label="Referidos por Paciente"   value={d.referidos}        sub="Nuevos leads referidos" accent="#D4AF5A" trend={3} floatClass="icon-float-7" cardDelay="d-6" />
-          <KpiCard icon={<TrendingUp size={20} />}    label="Conversión"               value={`${d.conversion}%`} sub="Leads → Pacientes"     trend={2}         floatClass="icon-float-8" cardDelay="d-7" />
+        {/* ── Grid 3 × 3 KPIs ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
+          <KpiCard icon={<Users size={20} />}         label="Total Leads"              value={d.leads}            sub="Ingresaron al sistema"           trend={12} floatClass="icon-float"   cardDelay="d-0" />
+          <KpiCard icon={<Activity size={20} />}      label="Leads Activos"            value={d.leadsActivos}     sub="En proceso · cols. 03 → 07"      accent="#0891B2" floatClass="icon-float-2" cardDelay="d-1" />
+          <KpiCard icon={<UserCheck size={20} />}     label="Pacientes Activos"        value={d.pacientes}        sub="Compraron plan S1 o S2"          accent="#0D2244" floatClass="icon-float-3" cardDelay="d-2" />
+          <KpiCard icon={<CalendarCheck size={20} />} label="Citas Médicas"            value={d.citas}            sub="1ª cita + 2ª cita realizadas"    accent="#D4AF5A" trend={5} floatClass="icon-float-4" cardDelay="d-3" />
+          <KpiCard icon={<ShoppingBag size={20} />}   label="Planes Vendidos"          value={d.planesVendidos}   sub="Pagos confirmados"               trend={18}        floatClass="icon-float-5" cardDelay="d-4" />
+          <KpiCard icon={<TrendingUp size={20} />}    label="Conversión"               value={`${d.conversion}%`} sub="Leads → Pacientes activos"                           floatClass="icon-float-6" cardDelay="d-5" />
+          <KpiCard icon={<Award size={20} />}         label="Plan S1 — Control Met."   value={d.planS1}           sub="Pacientes en plan S1"            accent="#7C3AED"  floatClass="icon-float-7" cardDelay="d-6" />
+          <KpiCard icon={<Share2 size={20} />}        label="Plan S2 — Bienestar Int." value={d.planS2}           sub="Pacientes en plan S2"            accent="#EA580C"  floatClass="icon-float-8" cardDelay="d-7" />
+          <KpiCard icon={<Share2 size={20} />}        label="Referidos"                value={d.referidos}        sub="Nuevos leads por referido"       accent="#D4AF5A"  floatClass="icon-float"   cardDelay="d-8" />
         </div>
 
         {/* ── Fila gráficos ── */}
