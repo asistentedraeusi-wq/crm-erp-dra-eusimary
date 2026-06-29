@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Lock, Eye, EyeOff, ShieldCheck, UserPlus, Pencil, Trash2,
   CheckCircle2, XCircle, KeyRound, Users, RefreshCw, AlertTriangle,
+  DollarSign,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useLeads } from '../context/LeadsContext'
@@ -430,6 +431,9 @@ function ConfigPanel() {
         </p>
       </div>
 
+      {/* ── Pagos de pacientes (solo admin) ───────────────────────── */}
+      {currentUser?.role === 'admin' && <PagosAdmin />}
+
       {/* ── Eliminación de Leads (solo admin) ─────────────────────── */}
       {currentUser?.role === 'admin' && <LeadsAdmin />}
 
@@ -441,6 +445,125 @@ function ConfigPanel() {
           saving={saving}
         />
       )}
+    </div>
+  )
+}
+
+// ─── Pagos de Pacientes — solo Superadmin ────────────────────────────────────
+
+function PagosAdmin() {
+  const { leads, updateLead } = useLeads()
+  const [search,  setSearch]  = useState('')
+  const [saved,   setSaved]   = useState<Record<string, boolean>>({})
+
+  const filtered = leads.filter(l =>
+    l.name.toLowerCase().includes(search.toLowerCase()) ||
+    l.email.toLowerCase().includes(search.toLowerCase())
+  )
+
+  function toggle(id: string, campo: 'filtro_pagado' | 'pago_confirmado', valor: boolean) {
+    updateLead(id, { [campo]: valor })
+    setSaved(p => ({ ...p, [id]: true }))
+    setTimeout(() => setSaved(p => ({ ...p, [id]: false })), 2000)
+  }
+
+  const Toggle = ({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) => (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      style={{
+        width: '44px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+        background: checked ? '#16A34A' : '#D1D5DB', transition: 'background 0.2s', position: 'relative', flexShrink: 0,
+      }}
+    >
+      <span style={{
+        position: 'absolute', top: '3px',
+        left: checked ? '23px' : '3px',
+        width: '18px', height: '18px', borderRadius: '50%',
+        background: '#fff', transition: 'left 0.2s',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+      }} />
+    </button>
+  )
+
+  return (
+    <div style={{ marginTop: '32px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(22,163,74,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <DollarSign size={20} color="#16A34A" />
+        </div>
+        <div>
+          <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0D2244', margin: 0 }}>Estado de Pagos de Pacientes</h2>
+          <p style={{ fontSize: '12px', color: '#94A3B8', margin: '2px 0 0' }}>Solo visible para Superadmin — activa o corrige el estado de pago de cada paciente</p>
+        </div>
+      </div>
+
+      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar paciente por nombre o email..."
+            style={{ flex: 1, height: '38px', borderRadius: '10px', border: '1.5px solid #E2E8F0', padding: '0 14px', fontSize: '13px', color: '#0D2244', outline: 'none', boxSizing: 'border-box' }}
+          />
+        </div>
+
+        {/* Cabecera columnas */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 140px 32px', gap: '0', padding: '8px 20px', background: '#F8FAFC', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+          <span style={{ fontSize: '10px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Paciente</span>
+          <span style={{ fontSize: '10px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>Filtro pagado</span>
+          <span style={{ fontSize: '10px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>Pago confirmado</span>
+          <span />
+        </div>
+
+        {filtered.length === 0 ? (
+          <div style={{ padding: '32px', textAlign: 'center', color: '#94A3B8', fontSize: '14px' }}>
+            {leads.length === 0 ? 'No hay pacientes en el pipeline.' : 'Sin resultados.'}
+          </div>
+        ) : (
+          filtered.map((lead, i) => (
+            <div key={lead.id} style={{
+              display: 'grid', gridTemplateColumns: '1fr 140px 140px 32px',
+              alignItems: 'center', gap: '0', padding: '12px 20px',
+              borderBottom: i < filtered.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none',
+              background: saved[lead.id] ? 'rgba(22,163,74,0.04)' : '#fff',
+              transition: 'background 0.3s',
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: '#0D2244', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lead.name}</span>
+                <span style={{ fontSize: '11px', color: '#94A3B8' }}>{STAGE_LABELS[lead.stage] ?? lead.stage}</span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <Toggle
+                  checked={!!lead.filtro_pagado}
+                  onChange={v => toggle(lead.id, 'filtro_pagado', v)}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <Toggle
+                  checked={!!lead.pago_confirmado}
+                  onChange={v => toggle(lead.id, 'pago_confirmado', v)}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                {saved[lead.id] && <CheckCircle2 size={16} color="#16A34A" />}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div style={{ marginTop: '12px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(22,163,74,0.05)', border: '1px solid rgba(22,163,74,0.20)', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+        <DollarSign size={14} color="#16A34A" style={{ marginTop: '2px', flexShrink: 0 }} />
+        <p style={{ fontSize: '12px', color: '#166534', margin: 0, lineHeight: '1.6' }}>
+          Los cambios se guardan automáticamente en Supabase y se reflejan en el dashboard de KPIs y en todas las sesiones activas en tiempo real.
+        </p>
+      </div>
     </div>
   )
 }
