@@ -144,8 +144,11 @@ export default function DashboardPage() {
     l.tags.includes('Referido')
   ).length
 
-  // Conversión: leads que compraron un plan / total
-  const conversion = totalLeads > 0 ? Math.round((pacientesActivos / totalLeads) * 100) : 0
+  // Conversión: leads que avanzaron a proceso de atención (col 03 en adelante, excl. no_renueva/nutrir)
+  const convertidos = leads.filter(l =>
+    (STAGE_IDX[l.stage] ?? 0) >= STAGE_IDX['cita_agendada'] && !excluidos.has(l.stage)
+  ).length
+  const conversion = totalLeads > 0 ? Math.round((convertidos / totalLeads) * 100) : 0
 
   // Ingresos: filtro_pagado × $70K + plan S1 × $500K + plan S2 × $250K
   const filtrosPagados = leads.filter(l => l.filtro_pagado).length
