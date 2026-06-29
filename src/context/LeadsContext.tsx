@@ -57,7 +57,6 @@ export interface Lead {
 
 const STORAGE_KEY  = 'crm_eusimary_leads_v1'
 const CAL_PROC_KEY = 'crm_cal_processed_v1'
-const MIGRATED_KEY = 'crm_sb_migrated_v1'
 
 // Orden de etapas — solo avanzamos por webhook de Cal.com
 const STAGE_ORDER: StageId[] = [
@@ -210,29 +209,28 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   // ─── Sync inicial desde Supabase (fuente de verdad) ──────────────────────
   useEffect(() => {
     async function init() {
-      // Primera vez en este navegador: migrar localStorage → Supabase
-      // SOLO si Supabase está vacío — evita sobreescribir datos correctos
-      // con caché desactualizado de otro dispositivo
-      if (!localStorage.getItem(MIGRATED_KEY)) {
-        const sbCheck = await fetchAllLeads()
-        if (sbCheck !== null && sbCheck.length === 0) {
-          // Supabase vacío → subir datos locales (primer usuario que configura)
-          const localLeads = loadLeadsLocal()
-          if (localLeads.length > 0) {
-            await Promise.all(localLeads.map(upsertLead))
-            toast.success(`✓ ${localLeads.length} leads sincronizados con la nube`)
-          }
-        }
-        localStorage.setItem(MIGRATED_KEY, '1')
-      }
-
-      // Cargar datos desde Supabase (estado compartido entre usuarios)
+      // Supabase es la única fuente de verdad — nunca se sube localStorage
       const sbLeads = await fetchAllLeads()
-      if (sbLeads !== null) {
-        setLeads(sbLeads)
-        // Actualizar caché local
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(sbLeads))
-      }
+      if (sbLeads === null) return
+
+      // Auto-avance de leads 'guia' — corre DESPUÉS de cargar datos reales
+      // (nunca con datos de caché local para evitar sobreescribir Supabase)
+      const today = new Date(); today.setHours(0, 0, 0, 0)
+      const advanced = sbLeads.map(lead => {
+        const fuente = (lead.source ?? lead.fuente ?? '').toLowerCase()
+        if (fuente !== 'guia') return lead
+        const leadDate = new Date(lead.date); leadDate.setHours(0, 0, 0, 0)
+        const days = Math.floor((today.getTime() - leadDate.getTime()) / 86_400_000)
+        if (lead.stage === 'nuevo' && days >= 2)      return { ...lead, stage: 'contactado' as StageId }
+        if (lead.stage === 'contactado' && days >= 21) return { ...lead, stage: 'leads_nutrir' as StageId }
+        return lead
+      })
+      advanced.forEach((lead, i) => {
+        if (lead.stage !== sbLeads[i]?.stage) upsertLead(lead)
+      })
+
+      setLeads(advanced)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(advanced))
     }
     init()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -277,27 +275,6 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(leads))
   }, [leads])
-
-  // Auto-avance por tiempo para leads de fuente Guia
-  useEffect(() => {
-    const today = new Date(); today.setHours(0, 0, 0, 0)
-    setLeads(prev => {
-      const updated = prev.map(lead => {
-        const fuente = (lead.source ?? lead.fuente ?? '').toLowerCase()
-        if (fuente !== 'guia') return lead
-        const leadDate = new Date(lead.date); leadDate.setHours(0, 0, 0, 0)
-        const days = Math.floor((today.getTime() - leadDate.getTime()) / 86_400_000)
-        if (lead.stage === 'nuevo' && days >= 2) return { ...lead, stage: 'contactado' as StageId }
-        if (lead.stage === 'contactado' && days >= 21) return { ...lead, stage: 'leads_nutrir' as StageId }
-        return lead
-      })
-      // Persistir cambios de auto-avance en Supabase
-      updated.forEach((lead, i) => {
-        if (lead.stage !== prev[i]?.stage) upsertLead(lead)
-      })
-      return updated
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Cal.com Realtime ───────────────────────────────────────────────────────
   useEffect(() => {
