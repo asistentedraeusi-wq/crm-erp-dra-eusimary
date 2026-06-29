@@ -275,8 +275,29 @@ function WhatsAppIcon({ size = 16 }: { size?: number }) {
   )
 }
 
+const CITAS = [
+  {
+    id:    '1era' as const,
+    label: '1ª Cita Médica',
+    url:   'https://cal.com/eusi-contreras-morales-hfytax/cita-medica-especializada-en-control-metabolico-y-bienestar',
+  },
+  {
+    id:    '2da' as const,
+    label: '2ª Cita Médica',
+    url:   'https://cal.com/eusi-contreras-morales-hfytax/segunda-cita-medica',
+  },
+  {
+    id:    'libre' as const,
+    label: 'Cita Libre',
+    url:   'https://cal.com/eusi-contreras-morales-hfytax',
+  },
+]
+
 function TabPerfilActions({ lead }: { lead: Lead }) {
-  const [copied, setCopied] = useState(false)
+  const [copied,       setCopied]       = useState(false)
+  const [dropOpen,     setDropOpen]     = useState(false)
+  const [enviando,     setEnviando]     = useState(false)
+  const dropRef = useRef<HTMLDivElement>(null)
 
   function copyEmail() {
     navigator.clipboard.writeText(lead.email).then(() => {
@@ -285,29 +306,113 @@ function TabPerfilActions({ lead }: { lead: Lead }) {
     })
   }
 
-  return (
-    <div className="flex" style={{ gap: '8px' }}>
-      {/* WhatsApp — abre chat directo con el paciente */}
-      <a
-        href={`https://wa.me/${toWhatsAppNumber(lead.phone)}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex-1 flex items-center justify-center rounded-lg font-semibold transition-all duration-150 hover:opacity-90 active:scale-[0.97]"
-        style={{ background: '#25D366', color: '#fff', gap: '6px', padding: '8px 12px', fontSize: '11px', textDecoration: 'none' }}
-      >
-        <WhatsAppIcon size={13} />
-        WhatsApp
-      </a>
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    if (!dropOpen) return
+    function handleClick(e: MouseEvent) {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) setDropOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [dropOpen])
 
-      {/* Copiar email */}
-      <button
-        onClick={copyEmail}
-        className="flex-1 flex items-center justify-center rounded-lg border border-gray-200 font-semibold transition-all duration-150 hover:bg-gray-50 active:scale-[0.97]"
-        style={{ gap: '6px', padding: '8px 12px', fontSize: '11px', background: copied ? '#F0FDF9' : '#fff', borderColor: copied ? 'rgba(18,196,154,0.4)' : '#E5E7EB', color: copied ? '#12C49A' : '#374151' }}
-      >
-        {copied ? <CheckCircle2 size={13} /> : <Copy size={13} />}
-        {copied ? '¡Copiado!' : 'Copiar email'}
-      </button>
+  async function agendarCita(cita: typeof CITAS[number]) {
+    setDropOpen(false)
+    if (!supabase) { toast.error('Sin conexión a Supabase'); return }
+    if (!lead.email || lead.email === 'nuevo@email.com') {
+      toast.error('Este lead no tiene email registrado.')
+      return
+    }
+    setEnviando(true)
+    try {
+      const { error } = await supabase.functions.invoke('send-cita-link', {
+        body: { email: lead.email, nombre: lead.name, tipo: cita.id, calUrl: cita.url },
+      })
+      if (error) throw error
+      toast.success(`✉️ Enlace de ${cita.label} enviado a ${lead.email}`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al enviar'
+      toast.error(`No se pudo enviar: ${msg}`)
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+
+      {/* Fila 1: WhatsApp + Copiar email */}
+      <div className="flex" style={{ gap: '8px' }}>
+        <a
+          href={`https://wa.me/${toWhatsAppNumber(lead.phone)}`}
+          target="_blank" rel="noopener noreferrer"
+          className="flex-1 flex items-center justify-center rounded-lg font-semibold transition-all duration-150 hover:opacity-90 active:scale-[0.97]"
+          style={{ background: '#25D366', color: '#fff', gap: '6px', padding: '8px 12px', fontSize: '11px', textDecoration: 'none' }}
+        >
+          <WhatsAppIcon size={13} /> WhatsApp
+        </a>
+        <button
+          onClick={copyEmail}
+          className="flex-1 flex items-center justify-center rounded-lg border font-semibold transition-all duration-150 hover:bg-gray-50 active:scale-[0.97]"
+          style={{ gap: '6px', padding: '8px 12px', fontSize: '11px', background: copied ? '#F0FDF9' : '#fff', borderColor: copied ? 'rgba(18,196,154,0.4)' : '#E5E7EB', color: copied ? '#12C49A' : '#374151' }}
+        >
+          {copied ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+          {copied ? '¡Copiado!' : 'Copiar email'}
+        </button>
+      </div>
+
+      {/* Fila 2: Agendar Cita — dropdown naranja */}
+      <div ref={dropRef} style={{ position: 'relative' }}>
+        <button
+          onClick={() => setDropOpen(p => !p)}
+          disabled={enviando}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+            background: enviando ? '#9CA3AF' : '#EA580C', color: '#fff', border: 'none',
+            borderRadius: '8px', padding: '9px 14px', fontSize: '12px', fontWeight: 700,
+            cursor: enviando ? 'not-allowed' : 'pointer',
+            boxShadow: enviando ? 'none' : '0 3px 10px rgba(234,88,12,0.35)',
+            transition: 'all 150ms',
+          }}
+        >
+          {enviando
+            ? <><svg style={{ animation: 'spin 1s linear infinite', width: 13, height: 13 }} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg> Enviando...</>
+            : <><Calendar size={13} /> Agendar Cita <ChevronRight size={12} style={{ transform: dropOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 150ms' }} /></>
+          }
+        </button>
+
+        {dropOpen && (
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 100,
+            background: '#fff', borderRadius: '10px', border: '1px solid #E5E7EB',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden',
+          }}>
+            {CITAS.map((cita, i) => (
+              <button
+                key={cita.id}
+                onClick={() => agendarCita(cita)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '11px 14px', background: 'transparent', border: 'none',
+                  borderTop: i > 0 ? '1px solid #F3F4F6' : 'none',
+                  cursor: 'pointer', textAlign: 'left', transition: 'background 100ms',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#FFF7ED')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Calendar size={13} color="#EA580C" />
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#0D2244' }}>{cita.label}</p>
+                  <p style={{ margin: 0, fontSize: '10px', color: '#9CA3AF', marginTop: '1px' }}>Enviar enlace Cal.com por email</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   )
 }
