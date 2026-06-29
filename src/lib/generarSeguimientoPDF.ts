@@ -16,7 +16,7 @@ function chip(label: string, color: string, bg: string): string {
   return `<span style="display:inline-block;background:${bg};border:1px solid ${color}44;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;color:${color};margin:2px;">${label}</span>`;
 }
 
-function metrica(label: string, value: string, unit = ''): string {
+function metrica(label: string, value: string | undefined | null, unit = ''): string {
   return `
     <div style="background:#F9FAFB;border-radius:8px;padding:10px;border:1px solid #E5E7EB;text-align:center;">
       <div style="font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.06em;">${label}</div>
