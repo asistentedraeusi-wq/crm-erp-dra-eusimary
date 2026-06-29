@@ -11,6 +11,9 @@ import {
 } from 'lucide-react'
 import { useLeads, type Lead, type StageId } from '../context/LeadsContext'
 import { listarSoportes, eliminarSoporte, subirSoporteArchivo, TIPO_LABELS, TIPO_COLORS, type Soporte } from '../lib/soportes'
+import { obtenerHistoria } from '../lib/historia-clinica'
+import type { HistoriaClinicaForm as HCForm } from '../types/historia-clinica'
+import HistoriaClinicaFormEmbed from '../components/historia-clinica/HistoriaClinicaForm'
 
 // ─── Cal.com — actualizar con la URL real del evento "Segunda Cita Médica" ───
 const CAL_SEGUNDA_CITA_URL = 'https://cal.com/eusi-contreras-morales-hfytax/segunda-cita-medica'
@@ -770,42 +773,126 @@ function TabPlaceholder({ label, icon }: { label: string; icon: React.ReactNode 
 
 function TabHistoriaClinica({ lead }: { lead: Lead }) {
   const navigate = useNavigate()
+  const [hcDatos,   setHcDatos]   = useState<Partial<HCForm> | null>(null)
+  const [hcLoading, setHcLoading] = useState(false)
+  const [hcError,   setHcError]   = useState('')
 
   const partes    = lead.name.trim().split(' ')
   const nombres   = partes.slice(0, Math.ceil(partes.length / 2)).join(' ')
   const apellidos = partes.slice(Math.ceil(partes.length / 2)).join(' ')
   const esParaclinicos = lead.stage === 'paraclínicos'
-  const tieneHC        = Boolean(lead.hc_id)
 
-  function abrirFormulario() {
-    // Si ya existe una HC guardada → abrir en modo edición con todos los datos
-    if (lead.hc_id) {
-      navigate(`/historia-clinica/${lead.hc_id}`, { state: { leadId: lead.id, modoEdicion: true } })
-      return
-    }
-    // Primera vez → crear nueva HC pre-rellenada con datos del lead
-    navigate('/blueprints', {
-      state: {
-        leadId: lead.id,
-        leadPrefill: {
-          nombres,
-          apellidos,
-          telefono:       lead.phone,
-          email:          lead.email,
-          edad:           String(lead.age),
-          ciudad:         lead.city,
-          meta:           lead.meta      ?? '',
-          objetivo:       lead.objetivo  ?? '',
-          condicion:      lead.condicion ?? '',
-          fecha_consulta: new Date().toISOString().split('T')[0],
-        },
-      },
+  useEffect(() => {
+    if (!lead.hc_id) return
+    setHcLoading(true)
+    setHcError('')
+    obtenerHistoria(lead.hc_id).then(({ data, error }) => {
+      if (error || !data) {
+        setHcError(error?.message ?? 'No se pudo cargar la historia clínica.')
+      } else {
+        setHcDatos(data.datos)
+      }
+      setHcLoading(false)
     })
+  }, [lead.hc_id])
+
+  const prefill = {
+    nombres, apellidos,
+    telefono: lead.phone, email: lead.email,
+    edad: String(lead.age), ciudad: lead.city,
+    meta: lead.meta ?? '', objetivo: lead.objetivo ?? '',
+    condicion: lead.condicion ?? '',
+    fecha_consulta: new Date().toISOString().split('T')[0],
   }
 
+  // ── Cargando ──
+  if (lead.hc_id && hcLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 0', color: '#9CA3AF', gap: '10px', fontSize: '13px' }}>
+        <svg style={{ animation: 'spin 1s linear infinite', width: 16, height: 16, flexShrink: 0 }} viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+          <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        </svg>
+        Cargando historia clínica...
+      </div>
+    )
+  }
+
+  // ── HC cargada → mostrar inline en modo lectura ──
+  if (lead.hc_id && hcDatos) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+        {/* Banner paraclínicos cuando aplica */}
+        {esParaclinicos && (
+          <div style={{ border: '1.5px solid #D97706', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ background: '#FFFBEB', padding: '10px 14px', borderBottom: '1px solid #D9770630' }}>
+              <p style={{ fontSize: '11px', fontWeight: 800, color: '#92400E', margin: 0, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                ⏳ Esperando Resultados de Laboratorio
+              </p>
+            </div>
+            <div style={{ padding: '10px 14px', background: '#fff' }}>
+              <p style={{ fontSize: '11px', color: '#6B7280', margin: '0 0 8px', lineHeight: '1.5' }}>
+                Cuando el paciente envíe sus resultados, ve a <strong>Editar / 2ª Cita</strong> → Sección 09.
+              </p>
+              <button
+                onClick={() => navigate(`/historia-clinica/${lead.hc_id}`, { state: { leadId: lead.id, modoEdicion: true } })}
+                style={{ width: '100%', padding: '9px', borderRadius: '8px', background: '#D97706', border: 'none', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <FileText size={13} /> Abrir HC → Cargar Resultados (Sección 09)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Barra de acciones */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '10px 14px' }}>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: '12px', fontWeight: 700, color: '#065F46', margin: 0 }}>✓ Historia Clínica registrada</p>
+            <p style={{ fontSize: '11px', color: '#6B7280', margin: '2px 0 0' }}>Vista de lectura · Scroll para ver todos los datos</p>
+          </div>
+          <button
+            onClick={() => navigate(`/historia-clinica/${lead.hc_id}`, { state: { leadId: lead.id, modoEdicion: true } })}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#0A3D2E', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, boxShadow: '0 2px 8px rgba(10,61,46,0.25)' }}
+          >
+            <Edit2 size={13} /> Editar / 2ª Cita
+          </button>
+        </div>
+
+        {/* Formulario completo en modo lectura */}
+        <HistoriaClinicaFormEmbed
+          initialData={hcDatos}
+          readOnly
+          leadId={lead.id}
+          hcId={lead.hc_id}
+        />
+      </div>
+    )
+  }
+
+  // ── Error cargando HC (hc_id existe pero no se pudo obtener) ──
+  if (lead.hc_id && hcError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '12px 16px' }}>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: '#DC2626', margin: 0 }}>Error al cargar la historia</p>
+          <p style={{ fontSize: '11px', color: '#6B7280', margin: '4px 0 0' }}>{hcError}</p>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <button
+            onClick={() => navigate(`/historia-clinica/${lead.hc_id}`, { state: { leadId: lead.id } })}
+            style={{ background: '#0A3D2E', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <FileText size={14} /> Abrir Historia Clínica
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Sin HC: crear nueva ──
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* Banner Paraclínicos — esperando resultados de laboratorio */}
       {esParaclinicos && (
         <div style={{ border: '1.5px solid #D97706', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ background: '#FFFBEB', padding: '10px 14px', borderBottom: '1px solid #D9770630' }}>
@@ -818,13 +905,8 @@ function TabHistoriaClinica({ lead }: { lead: Lead }) {
               Cuando el paciente envíe sus resultados, ábrelos en la Historia Clínica y ve a la <strong>Sección 09 — Resultados de Laboratorio</strong>.
             </p>
             <button
-              onClick={abrirFormulario}
-              style={{
-                width: '100%', padding: '9px', borderRadius: '8px',
-                background: '#D97706', border: 'none', color: '#fff',
-                fontSize: '12px', fontWeight: 700, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              }}
+              onClick={() => navigate('/blueprints', { state: { leadId: lead.id, leadPrefill: prefill } })}
+              style={{ width: '100%', padding: '9px', borderRadius: '8px', background: '#D97706', border: 'none', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
             >
               <FileText size={13} /> Abrir HC → Cargar Resultados (Sección 09)
             </button>
@@ -832,28 +914,19 @@ function TabHistoriaClinica({ lead }: { lead: Lead }) {
         </div>
       )}
 
-      {/* Nueva Historia Clínica */}
       <div className="flex flex-col items-center justify-center" style={{ minHeight: '160px', gap: '14px', textAlign: 'center' }}>
         <div className="w-12 h-12 rounded-2xl bg-[#E6FAF5] flex items-center justify-center">
           <FileText size={20} className="text-[#12C49A]" />
         </div>
         <div>
           <p className="text-sm font-semibold text-gray-600">Historia Clínica BluePrint</p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {tieneHC ? 'Continuar con datos de la 1ª cita guardados' : 'Crear el documento clínico para este paciente'}
-          </p>
+          <p className="text-xs text-gray-400 mt-0.5">Crear el documento clínico para este paciente</p>
         </div>
         <button
-          onClick={abrirFormulario}
-          style={{
-            background: tieneHC ? '#0D2244' : '#12C49A', color: '#fff', border: 'none',
-            borderRadius: '10px', padding: '10px 24px',
-            fontSize: '13px', fontWeight: '700', cursor: 'pointer',
-            boxShadow: tieneHC ? '0 4px 14px rgba(13,34,68,0.35)' : '0 4px 14px rgba(18,196,154,0.35)',
-            display: 'flex', alignItems: 'center', gap: '6px',
-          }}
+          onClick={() => navigate('/blueprints', { state: { leadId: lead.id, leadPrefill: prefill } })}
+          style={{ background: '#12C49A', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 14px rgba(18,196,154,0.35)', display: 'flex', alignItems: 'center', gap: '6px' }}
         >
-          <FileText size={14} /> {tieneHC ? 'Abrir Historia Clínica' : 'Nueva Historia Clínica'}
+          <FileText size={14} /> Nueva Historia Clínica
         </button>
       </div>
     </div>
