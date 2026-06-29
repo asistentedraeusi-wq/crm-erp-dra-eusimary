@@ -221,8 +221,9 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         if (fuente !== 'guia') return lead
         const leadDate = new Date(lead.date); leadDate.setHours(0, 0, 0, 0)
         const days = Math.floor((today.getTime() - leadDate.getTime()) / 86_400_000)
-        if (lead.stage === 'nuevo' && days >= 2)      return { ...lead, stage: 'contactado' as StageId }
-        if (lead.stage === 'contactado' && days >= 21) return { ...lead, stage: 'leads_nutrir' as StageId }
+        // Solo avanza nuevo → contactado (automático).
+        // contactado → leads_nutrir se hace manualmente para no sobreescribir movimientos intencionales.
+        if (lead.stage === 'nuevo' && days >= 2) return { ...lead, stage: 'contactado' as StageId }
         return lead
       })
       advanced.forEach((lead, i) => {
