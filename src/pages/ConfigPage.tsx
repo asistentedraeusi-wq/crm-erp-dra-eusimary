@@ -39,7 +39,7 @@ function PinGate({ onUnlock }: { onUnlock: () => void }) {
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFB' }}>
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFB', minHeight: 0 }}>
       <div style={{
         background: '#fff', borderRadius: '20px', padding: '48px 52px',
         boxShadow: '0 4px 32px rgba(0,0,0,0.08)', width: '100%', maxWidth: '400px',
@@ -289,7 +289,7 @@ function ConfigPanel() {
   const roleBg    = { admin: '#EEF2FF',  asistente: '#ECFEFF'  }
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', background: '#F8FAFB', padding: '36px 40px' }}>
+    <div style={{ flex: 1, overflowY: 'auto', background: '#F8FAFB', padding: '36px 40px 60px' }}>
 
       {/* Feedback toast */}
       {feedback && (
@@ -681,8 +681,14 @@ function LeadsAdmin() {
 
 export default function ConfigPage() {
   const [unlocked, setUnlocked] = useState(false)
-  if (!unlocked) return <PinGate onUnlock={() => setUnlocked(true)} />
-  return <ConfigPanel />
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {!unlocked
+        ? <PinGate onUnlock={() => setUnlocked(true)} />
+        : <ConfigPanel />
+      }
+    </div>
+  )
 }
 
 // Tipado local para el formulario
