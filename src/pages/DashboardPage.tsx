@@ -150,9 +150,15 @@ export default function DashboardPage() {
   ).length
   const conversion = totalLeads > 0 ? Math.round((convertidos / totalLeads) * 100) : 0
 
-  // Ingresos: filtro_pagado × $70K + plan S1 × $500K + plan S2 × $250K
+  // Ingresos reales: filtro pagado + pago2_pagado (nuevo) o pago_confirmado×precio (legado)
   const filtrosPagados = leads.filter(l => l.filtro_pagado).length
-  const valorCOP = filtrosPagados * 70_000 + planS1 * 500_000 + planS2 * 250_000
+  const ingresosProgramas = leads.reduce((acc, l) => {
+    if (l.pago2_pagado && l.pago2_pagado > 0) return acc + l.pago2_pagado
+    if (l.pago_confirmado && l.plan === 'S1') return acc + 500_000
+    if (l.pago_confirmado && l.plan === 'S2') return acc + 250_000
+    return acc
+  }, 0)
+  const valorCOP = filtrosPagados * 70_000 + ingresosProgramas
 
   const live = { leads: totalLeads, leadsActivos, pacientes: pacientesActivos, citas: citasMedicas, conversion, planS1, planS2, referidos, planesVendidos, valorCOP }
   const d = period === 'mes' ? live : ACUMULADO

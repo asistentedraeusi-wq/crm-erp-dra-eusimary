@@ -1306,19 +1306,33 @@ function TabPagos({ lead }: { lead: Lead }) {
   function handleRegistrarPago2() {
     const valor  = parseInt(valorInput.replace(/\D/g, ''))  || 0
     const pagado = tipoPago2 === 'total' ? valor : (parseInt(pagadoInput.replace(/\D/g, '')) || 0)
+    const hoy    = new Date().toISOString().split('T')[0]
+
+    // Mapear programa → código de plan para KPIs
+    const PROG_PLAN: Record<string, 'S1' | 'S2'> = {
+      control_metabolico: 'S1',
+      bienestar_integral: 'S2',
+    }
+    const planCode = prog2 ? PROG_PLAN[prog2] : undefined
+
     updateLead(lead.id, {
       pago2_valor_asignado: valor,
       pago2_pagado:         pagado,
       pago2_tipo:           tipoPago2,
-      pago2_fecha:          new Date().toISOString().split('T')[0],
+      pago2_fecha:          hoy,
+      // Sincronizar campos de KPI
+      ...(planCode ? { plan: planCode } : {}),
+      ...(tipoPago2 === 'total' ? { pago_confirmado: true, plan_inicio: hoy } : {}),
     })
-    setEditandoPago2(false)
-    const saldo = Math.max(0, valor - pagado)
+
     if (tipoPago2 === 'total') {
-      toast.success('✓ Pago total registrado — saldo $0')
+      moveStage(lead.id, 'activo')
+      toast.success('✓ Pago total registrado — Paciente Activo')
     } else {
-      toast.success(`✓ Pago parcial registrado — saldo $${saldo.toLocaleString('es-CO')} COP`)
+      const saldo = Math.max(0, valor - pagado)
+      toast.success(`✓ Pago parcial registrado — saldo pendiente $${saldo.toLocaleString('es-CO')} COP`)
     }
+    setEditandoPago2(false)
   }
 
   const Badge = ({ ok, label }: { ok: boolean; label: string }) => (
