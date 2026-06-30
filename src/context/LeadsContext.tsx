@@ -27,6 +27,22 @@ export interface SeguimientoSemanal {
   control_nueva_dosis?:string
   control_prox_fecha?: string
   control_indicaciones?:string
+  // Nuevos — Telemedicina
+  cadera?:         string
+  cuello?:         string
+  pantorrilla?:    string
+  fc?:             string
+  // Nuevos — Presencial
+  imc?:            string
+  grasa_pct?:      string
+  masa_grasa_kg?:  string
+  masa_magra_pct?: string
+  agua_pct?:       string
+  fat_range?:      string
+  temp?:           string
+  sato2?:          string
+  fr?:             string
+  peri_abd?:       string
 }
 
 export interface Lead {
@@ -52,6 +68,7 @@ export interface Lead {
   hc_id?:           string
   seguimiento?:     SeguimientoSemanal[]
   // Pago 2ª cita — se activa cuando HC Point 11 se guarda con programa_2cita
+  fecha_aplicacion_med?:  string
   segunda_cita_programa?: string
   pago2_valor_asignado?:  number
   pago2_pagado?:          number
@@ -121,6 +138,7 @@ function rowToLead(row: DbRow): Lead {
     plan_inicio:     (row.plan_inicio as string) ?? undefined,
     hc_id:           (row.hc_id as string) ?? undefined,
     seguimiento:     (row.seguimiento as SeguimientoSemanal[]) ?? undefined,
+    fecha_aplicacion_med:  (row.fecha_aplicacion_med as string) ?? undefined,
     segunda_cita_programa: (row.segunda_cita_programa as string) ?? undefined,
     pago2_valor_asignado:  (row.pago2_valor_asignado as number) ?? undefined,
     pago2_pagado:          (row.pago2_pagado as number) ?? undefined,
@@ -152,6 +170,7 @@ function leadToRow(lead: Lead) {
     plan_inicio:            lead.plan_inicio ?? null,
     hc_id:                  lead.hc_id ?? null,
     seguimiento:            lead.seguimiento ?? null,
+    fecha_aplicacion_med:   lead.fecha_aplicacion_med ?? null,
     segunda_cita_programa:  lead.segunda_cita_programa ?? null,
     pago2_valor_asignado:   lead.pago2_valor_asignado ?? null,
     pago2_pagado:           lead.pago2_pagado ?? null,

@@ -1072,6 +1072,18 @@ function TabSeguimientoPanel({ lead }: { lead: Lead }) {
   const isS1 = lead.plan === 'S1'
   const seguimiento = lead.seguimiento ?? []
 
+  // Cargar HC para mostrar baseline del Examen Físico
+  const [hcForm, setHcForm] = useState<HCForm | null>(null)
+  useEffect(() => {
+    if (lead.hc_id && isActivo) {
+      obtenerHistoria(lead.hc_id).then(({ data }) => {
+        if (data?.datos) setHcForm(data.datos as HCForm)
+      })
+    }
+  }, [lead.hc_id, isActivo])
+
+  const isTele = hcForm?.modalidad === 'telemedicina'
+
   function getSemana(n: number): import('../context/LeadsContext').SeguimientoSemanal {
     return seguimiento.find(s => s.semana === n) ?? { semana: n }
   }
@@ -1102,9 +1114,144 @@ function TabSeguimientoPanel({ lead }: { lead: Lead }) {
   const esControl = (n: number) => [4, 8, 12].includes(n)
   const SINT_OPTS = ['Náuseas', 'Estreñimiento', 'Fatiga', 'Acidez', 'Mareo', 'Sin síntomas']
 
+  // Baseline del Examen Físico para calcular deltas
+  const basePeso = hcForm ? (isTele ? hcForm.tp : hcForm.peso) : undefined
+
+  function DeltaBadge({ current, base, unit = 'kg', lowerBetter = true }: {
+    current?: string; base?: string; unit?: string; lowerBetter?: boolean
+  }) {
+    if (!current || !base) return null
+    const diff = parseFloat(current) - parseFloat(base)
+    if (isNaN(diff) || Math.abs(diff) < 0.01) return null
+    const improved = lowerBetter ? diff < 0 : diff > 0
+    return (
+      <span style={{
+        fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px',
+        background: improved ? '#D1FAE5' : '#FEE2E2',
+        color: improved ? '#065F46' : '#DC2626',
+      }}>
+        {diff < 0 ? '↓' : '↑'}{Math.abs(diff).toFixed(1)}{unit}
+      </span>
+    )
+  }
+
+  // Componente inline para cada campo del formulario semanal
+  const SemField = ({ label, fieldKey, type = 'text', ph = '', sem, n }: {
+    label: string
+    fieldKey: keyof import('../context/LeadsContext').SeguimientoSemanal
+    type?: string
+    ph?: string
+    sem: import('../context/LeadsContext').SeguimientoSemanal
+    n: number
+  }) => (
+    <div>
+      <label style={{ fontSize: '9px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '3px' }}>{label}</label>
+      <input
+        type={type}
+        value={(sem[fieldKey] as string) ?? ''}
+        onChange={e => updateSemana(n, { [fieldKey]: e.target.value })}
+        placeholder={ph}
+        style={{ width: '100%', height: '28px', borderRadius: '6px', border: '1px solid #E5E7EB', padding: '0 7px', fontSize: '11px', color: '#111827', outline: 'none', boxSizing: 'border-box' }}
+      />
+    </div>
+  )
+
+  // Celda de dato en el panel baseline
+  const BaseCell = ({ label, value, unit = '' }: { label: string; value?: string; unit?: string }) => (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: '8.5px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>{label}</div>
+      <div style={{ fontSize: '13px', fontWeight: 800, color: value ? '#0A3D2E' : '#D1D5DB' }}>
+        {value || '—'}{value && unit ? <span style={{ fontSize: '10px', fontWeight: 600, color: '#6B7280' }}> {unit}</span> : null}
+      </div>
+    </div>
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {/* Progreso */}
+
+      {/* ── Fechas del Programa ── */}
+      <div style={{ border: '1px solid #D1FAE5', borderRadius: '10px', overflow: 'hidden' }}>
+        <div style={{ background: '#F0FDF4', padding: '8px 14px', borderBottom: '1px solid #D1FAE5' }}>
+          <p style={{ fontSize: '10px', fontWeight: 800, color: '#065F46', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>Fechas del Programa</p>
+        </div>
+        <div style={{ padding: '10px 14px', background: '#fff', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {/* Inicio de programa — automático */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#374151' }}>Fecha de Inicio del Programa</span>
+            <span style={{ fontSize: '12px', fontWeight: 800, color: '#0A3D2E', background: '#E6FAF5', padding: '3px 10px', borderRadius: '6px' }}>
+              {lead.plan_inicio
+                ? new Date(lead.plan_inicio + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+                : '—'}
+            </span>
+          </div>
+          {/* Fecha aplicación medicamento — manual */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#374151', flexShrink: 0 }}>Fecha de Aplicación del Medicamento</span>
+            <input
+              type="date"
+              value={lead.fecha_aplicacion_med ?? ''}
+              onChange={e => updateLead(lead.id, { fecha_aplicacion_med: e.target.value })}
+              style={{ height: '28px', borderRadius: '6px', border: '1px solid #E5E7EB', padding: '0 8px', fontSize: '11px', color: '#111827', outline: 'none', background: '#fff', minWidth: '140px' }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Evaluación Inicial — Examen Físico Baseline ── */}
+      {hcForm && (
+        <div style={{ border: '1px solid #E5E7EB', borderRadius: '10px', overflow: 'hidden' }}>
+          <div style={{ background: '#0A3D2E', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ fontSize: '10px', fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
+              Evaluación Inicial — Examen Físico
+            </p>
+            <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.12)', padding: '2px 8px', borderRadius: '4px' }}>
+              {isTele ? 'Telemedicina' : 'Presencial'} · Sem. 0
+            </span>
+          </div>
+          <div style={{ padding: '12px 14px', background: '#F9FAFB' }}>
+            {isTele ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                <BaseCell label="Peso" value={hcForm.tp} unit="kg" />
+                <BaseCell label="Cintura" value={hcForm.tw} unit="cm" />
+                <BaseCell label="Cadera" value={hcForm.thip} unit="cm" />
+                <BaseCell label="Cuello" value={hcForm.tn} unit="cm" />
+                <BaseCell label="Pantorrilla" value={hcForm.tc} unit="cm" />
+                <BaseCell label="TA" value={hcForm.pa} unit="mmHg" />
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '10px' }}>
+                  <BaseCell label="Peso" value={hcForm.peso} unit="kg" />
+                  <BaseCell label="IMC" value={hcForm.imc} unit="kg/m²" />
+                  <BaseCell label="Grasa Corp." value={hcForm.grasa} unit="%" />
+                  <BaseCell label="Masa Grasa" value={hcForm.grasa_kg} unit="kg" />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '10px' }}>
+                  <BaseCell label="Masa Magra %" value={hcForm.muscular} unit="%" />
+                  <BaseCell label="Masa Magra Kg" value={hcForm.magra_kg} unit="kg" />
+                  <BaseCell label="Agua" value={hcForm.agua_total} unit="L" />
+                  <BaseCell label="Peri. Abd." value={hcForm.peri_abd} unit="cm" />
+                </div>
+                <div style={{ height: '1px', background: '#E5E7EB', margin: '2px 0 10px' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
+                  <BaseCell label="TA" value={hcForm.pa} unit="mmHg" />
+                  <BaseCell label="FC" value={hcForm.fc} unit="lpm" />
+                  <BaseCell label="Temp." value={hcForm.temp} unit="°C" />
+                  <BaseCell label="SatO₂" value={hcForm.sato2} unit="%" />
+                  <BaseCell label="FR" value={hcForm.fr} unit="rpm" />
+                </div>
+                {hcForm.fat_range && (
+                  <div style={{ marginTop: '8px', padding: '5px 10px', background: '#E6FAF5', borderRadius: '6px', fontSize: '11px', color: '#0A3D2E', fontWeight: 600 }}>
+                    Rango grasa óptima: <strong>{hcForm.fat_range}</strong>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Progreso ── */}
       <div style={{ background: '#F0FDF4', border: '1px solid #6EE7B7', borderRadius: '10px', padding: '10px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
           <span style={{ fontSize: '11px', fontWeight: 700, color: '#15803D' }}>Progreso del programa</span>
@@ -1115,7 +1262,7 @@ function TabSeguimientoPanel({ lead }: { lead: Lead }) {
         </div>
       </div>
 
-      {/* Grid 12 semanas */}
+      {/* ── Grid 12 semanas ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
         {semanas.map(n => {
           const sem = getSemana(n)
@@ -1137,38 +1284,59 @@ function TabSeguimientoPanel({ lead }: { lead: Lead }) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {sem.peso && <span style={{ fontSize: '10px', color: '#374151' }}>{sem.peso}kg</span>}
+                  {sem.peso && basePeso && <DeltaBadge current={sem.peso} base={basePeso} unit="kg" />}
                   <span style={{ fontSize: '10px', color: ok ? '#16A34A' : '#9CA3AF' }}>{open ? '▲' : '▼'}</span>
                 </div>
               </button>
 
               {open && (
                 <div style={{ padding: '10px', background: '#fff', borderTop: '1px solid #F3F4F6', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {/* Fecha y peso */}
+
+                  {/* ── Campos comunes ── */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                    {[
-                      { label: 'Fecha', key: 'fecha' as const, type: 'date' },
-                      { label: 'Peso (kg)', key: 'peso' as const, type: 'text', ph: '___' },
-                      { label: 'Cintura (cm)', key: 'cintura' as const, type: 'text', ph: '___' },
-                      { label: 'PA (mmHg)', key: 'pa' as const, type: 'text', ph: '120/80' },
-                      ...(isS1 ? [
-                        { label: 'Dosis GLP-1', key: 'dosis' as const, type: 'text', ph: '0.5mg' },
-                      ] : []),
-                      { label: 'Días ejercicio', key: 'dias_ejercicio' as const, type: 'text', ph: '0-7' },
-                      { label: 'Vasos agua', key: 'vasos_agua' as const, type: 'text', ph: '0-15' },
-                    ].map(f => (
-                      <div key={f.key}>
-                        <label style={{ fontSize: '9px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '3px' }}>{f.label}</label>
-                        <input
-                          type={f.type}
-                          value={sem[f.key] ?? ''}
-                          onChange={e => updateSemana(n, { [f.key]: e.target.value })}
-                          placeholder={('ph' in f ? f.ph : '') as string}
-                          style={{ width: '100%', height: '28px', borderRadius: '6px', border: '1px solid #E5E7EB', padding: '0 7px', fontSize: '11px', color: '#111827', outline: 'none', boxSizing: 'border-box' }}
-                        />
-                      </div>
-                    ))}
+                    <SemField label="Fecha" fieldKey="fecha" type="date" sem={sem} n={n} />
+                    <SemField label="Peso (kg)" fieldKey="peso" ph="—" sem={sem} n={n} />
+                    <SemField label="Cintura (cm)" fieldKey="cintura" ph="—" sem={sem} n={n} />
+                    <SemField label="PA (mmHg)" fieldKey="pa" ph="120/80" sem={sem} n={n} />
+                    {isS1 && <SemField label="Dosis GLP-1" fieldKey="dosis" ph="0.5mg" sem={sem} n={n} />}
+                    <SemField label="Días ejercicio" fieldKey="dias_ejercicio" ph="0-7" sem={sem} n={n} />
+                    <SemField label="Vasos agua" fieldKey="vasos_agua" ph="0-15" sem={sem} n={n} />
                   </div>
-                  {/* Síntomas */}
+
+                  {/* ── Campos Telemedicina ── */}
+                  {isTele && (
+                    <div>
+                      <p style={{ fontSize: '9px', fontWeight: 800, color: '#0891B2', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '2px 0 6px' }}>📡 Medidas Corporales (Telemedicina)</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                        <SemField label="Cadera (cm)" fieldKey="cadera" ph="—" sem={sem} n={n} />
+                        <SemField label="Cuello (cm)" fieldKey="cuello" ph="—" sem={sem} n={n} />
+                        <SemField label="Pantorrilla (cm)" fieldKey="pantorrilla" ph="—" sem={sem} n={n} />
+                        <SemField label="FC (lpm)" fieldKey="fc" ph="72" sem={sem} n={n} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Campos Presencial ── */}
+                  {!isTele && hcForm && (
+                    <div>
+                      <p style={{ fontSize: '9px', fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '2px 0 6px' }}>🏥 Composición Corporal (Presencial)</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                        <SemField label="IMC (kg/m²)" fieldKey="imc" ph="—" sem={sem} n={n} />
+                        <SemField label="Grasa Corp. (%)" fieldKey="grasa_pct" ph="—" sem={sem} n={n} />
+                        <SemField label="Masa Grasa (kg)" fieldKey="masa_grasa_kg" ph="—" sem={sem} n={n} />
+                        <SemField label="Masa Magra (%)" fieldKey="masa_magra_pct" ph="—" sem={sem} n={n} />
+                        <SemField label="Agua (L)" fieldKey="agua_pct" ph="—" sem={sem} n={n} />
+                        <SemField label="Peri. Abdominal (cm)" fieldKey="peri_abd" ph="—" sem={sem} n={n} />
+                        <SemField label="Rango Grasa Óptima" fieldKey="fat_range" ph="18-25%" sem={sem} n={n} />
+                        <SemField label="FC (lpm)" fieldKey="fc" ph="72" sem={sem} n={n} />
+                        <SemField label="Temp. (°C)" fieldKey="temp" ph="36.5" sem={sem} n={n} />
+                        <SemField label="SatO₂ (%)" fieldKey="sato2" ph="98" sem={sem} n={n} />
+                        <SemField label="FR (rpm)" fieldKey="fr" ph="16" sem={sem} n={n} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Síntomas ── */}
                   <div>
                     <label style={{ fontSize: '9px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '4px' }}>Síntomas</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
@@ -1185,7 +1353,8 @@ function TabSeguimientoPanel({ lead }: { lead: Lead }) {
                       })}
                     </div>
                   </div>
-                  {/* Adherencia */}
+
+                  {/* ── Adherencia ── */}
                   <div>
                     <label style={{ fontSize: '9px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '4px' }}>Adherencia</label>
                     <div style={{ display: 'flex', gap: '6px' }}>
@@ -1196,7 +1365,8 @@ function TabSeguimientoPanel({ lead }: { lead: Lead }) {
                       ))}
                     </div>
                   </div>
-                  {/* Notas */}
+
+                  {/* ── Notas ── */}
                   <div>
                     <label style={{ fontSize: '9px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '3px' }}>Notas</label>
                     <textarea
@@ -1206,7 +1376,8 @@ function TabSeguimientoPanel({ lead }: { lead: Lead }) {
                       style={{ width: '100%', borderRadius: '6px', border: '1px solid #E5E7EB', padding: '5px 7px', fontSize: '11px', color: '#111827', resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
-                  {/* Bloque control médico */}
+
+                  {/* ── Bloque control médico ── */}
                   {ctrl && (
                     <div style={{ background: '#FEFCE8', border: '1px solid #D4AF3744', borderRadius: '6px', padding: '8px' }}>
                       <p style={{ fontSize: '10px', fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>⭐ Control Médico — Sem {n}</p>
@@ -1220,7 +1391,7 @@ function TabSeguimientoPanel({ lead }: { lead: Lead }) {
                           <div key={f.key}>
                             <label style={{ fontSize: '9px', fontWeight: 700, color: '#92400E', display: 'block', marginBottom: '2px' }}>{f.label}</label>
                             <input
-                              value={sem[f.key] ?? ''}
+                              value={(sem[f.key] as string) ?? ''}
                               onChange={e => updateSemana(n, { [f.key]: e.target.value })}
                               style={{ width: '100%', height: '26px', borderRadius: '5px', border: '1px solid #D4AF3766', padding: '0 6px', fontSize: '11px', color: '#111827', outline: 'none', boxSizing: 'border-box', background: '#fff' }}
                             />
