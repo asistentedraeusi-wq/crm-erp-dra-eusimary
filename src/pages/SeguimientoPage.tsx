@@ -300,26 +300,39 @@ function SemanaCard({
                   else    toast.warning(`No se pudo guardar en Soportes.`)
 
                   // 2. Enviar email con PDF si hay email del paciente
-                  if (lead.email && supabase) {
+                  if (!lead.email) {
+                    toast.warning('Este paciente no tiene email guardado — el reporte no se puede enviar.', { duration: 5000 })
+                  } else if (lead.email && supabase) {
                     try {
-                      const html = buildSeguimientoSemanaHTML(lead, semana, sem, hcForm, semAnterior)
+                      const html      = buildSeguimientoSemanaHTML(lead, semana, sem, hcForm, semAnterior)
                       const pdfBase64 = await htmlToPdfBase64(html)
+                      if (!pdfBase64) console.warn('PDF generation returned null — email will be sent without attachment')
                       supabase.functions.invoke('notify-seguimiento-semanal', {
                         body: {
-                          email:     lead.email,
-                          nombre:    lead.name,
+                          email:  lead.email,
+                          nombre: lead.name,
                           semana,
-                          plan:      lead.plan,
+                          plan:   lead.plan,
                           pdfBase64,
                         },
-                      }).then(() => {
-                        toast.success(`📧 Reporte Semana ${semana} enviado a ${lead.email}`, { duration: 4000 })
+                      }).then(({ data, error }: { data: unknown; error: unknown }) => {
+                        if (error) {
+                          console.warn('notify-seguimiento-semanal invoke error:', error)
+                          toast.warning(`Soportes guardado. Email falló — revisa la función en Supabase.`)
+                        } else if ((data as { ok?: boolean })?.ok === false) {
+                          const status = (data as { status?: number })?.status
+                          console.warn('notify-seguimiento-semanal Brevo error — status:', status, data)
+                          toast.warning(`Soportes guardado. Brevo rechazó el email (${status ?? '?'}). Verifica BREVO_API_KEY en Supabase.`)
+                        } else {
+                          toast.success(`📧 Reporte Semana ${semana} enviado a ${lead.email}`, { duration: 4000 })
+                        }
                       }).catch((err: unknown) => {
                         console.warn('notify-seguimiento-semanal:', err)
-                        toast.warning('Guardado en Soportes. No se pudo enviar el email.')
+                        toast.warning('Soportes guardado. No se pudo invocar la función de email.')
                       })
                     } catch (err) {
-                      console.warn('PDF seguimiento:', err)
+                      console.warn('PDF seguimiento build:', err)
+                      toast.warning('No se pudo generar el PDF del reporte.')
                     }
                   }
 
@@ -402,6 +415,22 @@ function PacienteDetail({ lead }: { lead: Lead }) {
   }, [lead.hc_id])
 
   const isTele = hcForm?.modalidad === 'telemedicina'
+
+  const pesoBaseline = hcForm
+    ? parseFloat((hcForm.modalidad === 'telemedicina' ? hcForm.tp : hcForm.peso) ?? '')
+    : NaN
+  const lastSemConPeso = (lead.seguimiento ?? [])
+    .filter(s => !!s.peso)
+    .sort((a, b) => b.semana - a.semana)[0]
+  const pesoActual    = lastSemConPeso ? parseFloat(lastSemConPeso.peso ?? '') : NaN
+  const metaPeso      = lead.meta ? parseFloat(lead.meta) : NaN
+  const kilosPerdidos = !isNaN(pesoBaseline) && !isNaN(pesoActual)
+    ? pesoBaseline - pesoActual : null
+  const kilosFaltan   = !isNaN(pesoActual) && !isNaN(metaPeso)
+    ? pesoActual - metaPeso : null
+  const pctProgreso   = !isNaN(pesoBaseline) && !isNaN(metaPeso) && !isNaN(pesoActual) && pesoBaseline > metaPeso
+    ? Math.min(100, Math.max(0, ((pesoBaseline - pesoActual) / (pesoBaseline - metaPeso)) * 100))
+    : null
 
   function updateSemana(n: number, patch: Partial<SeguimientoSemanal>) {
     const prev = (lead.seguimiento ?? []).filter(s => s.semana !== n)
@@ -530,6 +559,80 @@ function PacienteDetail({ lead }: { lead: Lead }) {
                 )}
               </>
             )}
+
+            {/* ── Meta Sugerida + Progreso ── */}
+            <div style={{ marginTop: '14px', border: '1.5px solid #12C49A', borderRadius: '10px', overflow: 'hidden' }}>
+              <div style={{ background: '#12C49A', padding: '8px 14px' }}>
+                <p style={{ margin: 0, fontSize: '10px', fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Meta Sugerida y Progreso de Peso</p>
+              </div>
+              <div style={{ padding: '12px 14px', background: '#fff', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Meta editable */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#374151' }}>Meta de Peso Sugerida</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <input
+                      type="number"
+                      value={lead.meta ?? ''}
+                      onChange={e => updateLead(lead.id, { meta: e.target.value })}
+                      placeholder="65"
+                      style={{ width: '80px', height: '32px', borderRadius: '8px', border: '1.5px solid #12C49A', padding: '0 8px', fontSize: '13px', fontWeight: 700, color: '#0A3D2E', textAlign: 'center', outline: 'none' }}
+                    />
+                    <span style={{ fontSize: '12px', color: '#6B7280' }}>kg</span>
+                  </div>
+                </div>
+                {/* Stats: perdidos / faltan */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div style={{ textAlign: 'center', padding: '12px 8px', background: '#F0FDF4', borderRadius: '10px', border: '1px solid #BBF7D0' }}>
+                    <p style={{ fontSize: '9px', fontWeight: 700, color: '#065F46', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>↓ Ha Bajado</p>
+                    {kilosPerdidos !== null ? (
+                      <>
+                        <p style={{ fontSize: '22px', fontWeight: 900, color: kilosPerdidos > 0 ? '#16A34A' : kilosPerdidos < 0 ? '#DC2626' : '#6B7280', margin: 0, lineHeight: 1.1 }}>
+                          {Math.abs(kilosPerdidos).toFixed(1)}
+                        </p>
+                        <p style={{ fontSize: '11px', color: '#6B7280', margin: '2px 0 0' }}>
+                          kg {kilosPerdidos > 0 ? 'perdidos' : kilosPerdidos < 0 ? 'ganados' : 'sin cambio'}
+                        </p>
+                      </>
+                    ) : (
+                      <p style={{ fontSize: '13px', color: '#D1D5DB', margin: '8px 0' }}>Sin registro</p>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'center', padding: '12px 8px', background: kilosFaltan !== null && kilosFaltan <= 0 ? '#F0FDF4' : '#FFF7ED', borderRadius: '10px', border: `1px solid ${kilosFaltan !== null && kilosFaltan <= 0 ? '#BBF7D0' : '#FED7AA'}` }}>
+                    <p style={{ fontSize: '9px', fontWeight: 700, color: kilosFaltan !== null && kilosFaltan <= 0 ? '#065F46' : '#92400E', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
+                      {kilosFaltan !== null && kilosFaltan <= 0 ? '🎯 Meta lograda' : 'Le Faltan'}
+                    </p>
+                    {kilosFaltan !== null ? (
+                      <>
+                        <p style={{ fontSize: '22px', fontWeight: 900, color: kilosFaltan <= 0 ? '#16A34A' : '#D97706', margin: 0, lineHeight: 1.1 }}>
+                          {kilosFaltan <= 0 ? '✓' : kilosFaltan.toFixed(1)}
+                        </p>
+                        {kilosFaltan > 0 && <p style={{ fontSize: '11px', color: '#6B7280', margin: '2px 0 0' }}>kg para la meta</p>}
+                      </>
+                    ) : (
+                      <p style={{ fontSize: '11px', color: '#D1D5DB', margin: '8px 0' }}>
+                        {!lead.meta ? 'Sin meta definida' : 'Sin peso registrado'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {/* Barra de progreso hacia la meta */}
+                {pctProgreso !== null && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#9CA3AF', marginBottom: '4px' }}>
+                      <span>Inicio: {pesoBaseline.toFixed(1)} kg</span>
+                      <span>Actual: {pesoActual.toFixed(1)} kg</span>
+                      <span>Meta: {metaPeso.toFixed(1)} kg</span>
+                    </div>
+                    <div style={{ height: '8px', background: '#E5E7EB', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pctProgreso}%`, background: 'linear-gradient(90deg, #12C49A, #16A34A)', borderRadius: '4px', transition: 'width 0.4s' }} />
+                    </div>
+                    <p style={{ fontSize: '10px', color: '#6B7280', margin: '4px 0 0', textAlign: 'right' }}>
+                      {pctProgreso.toFixed(0)}% del camino recorrido
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
