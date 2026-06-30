@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Activity, ChevronRight, User, Save } from 'lucide-react'
+import { Activity, ChevronRight, User, Save, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLeads, type Lead, type SeguimientoSemanal } from '../context/LeadsContext'
-import { guardarControlSeguimiento } from '../lib/generarSeguimientoPDF'
+import { guardarControlSeguimiento, buildSeguimientoSemanaHTML } from '../lib/generarSeguimientoPDF'
 import { obtenerHistoria } from '../lib/historia-clinica'
+import { htmlToPdfBase64 } from '../lib/htmlToPdf'
+import { supabase } from '../lib/supabase'
 import type { HistoriaClinicaForm as HCForm } from '../types/historia-clinica'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -280,7 +282,7 @@ function SemanaCard({
             />
           </div>
 
-          {/* ── Botón guardar en Soportes (existente) ── */}
+          {/* ── Botón guardar en Soportes + enviar email ── */}
           {done && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '4px' }}>
               <button
@@ -288,23 +290,55 @@ function SemanaCard({
                 disabled={guardando}
                 onClick={async () => {
                   setGuardando(true)
-                  const ok = await guardarControlSeguimiento(lead, semana, sem)
-                  if (ok) toast.success(`Semana ${semana} guardada en Soportes.`, { duration: 3000 })
-                  else    toast.warning(`No se pudo guardar en Soportes — verifica el bucket.`)
+                  const semAnterior = semana > 1
+                    ? (lead.seguimiento ?? []).find(s => s.semana === semana - 1) ?? null
+                    : null
+
+                  // 1. Guardar en Soportes
+                  const ok = await guardarControlSeguimiento(lead, semana, sem, hcForm, semAnterior)
+                  if (ok) toast.success(`Semana ${semana} guardada en Soportes.`, { duration: 2500 })
+                  else    toast.warning(`No se pudo guardar en Soportes.`)
+
+                  // 2. Enviar email con PDF si hay email del paciente
+                  if (lead.email && supabase) {
+                    try {
+                      const html = buildSeguimientoSemanaHTML(lead, semana, sem, hcForm, semAnterior)
+                      const pdfBase64 = await htmlToPdfBase64(html)
+                      supabase.functions.invoke('notify-seguimiento-semanal', {
+                        body: {
+                          email:     lead.email,
+                          nombre:    lead.name,
+                          semana,
+                          plan:      lead.plan,
+                          pdfBase64,
+                        },
+                      }).then(() => {
+                        toast.success(`📧 Reporte Semana ${semana} enviado a ${lead.email}`, { duration: 4000 })
+                      }).catch((err: unknown) => {
+                        console.warn('notify-seguimiento-semanal:', err)
+                        toast.warning('Guardado en Soportes. No se pudo enviar el email.')
+                      })
+                    } catch (err) {
+                      console.warn('PDF seguimiento:', err)
+                    }
+                  }
+
                   setGuardando(false)
                 }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '6px',
-                  padding: '7px 14px', borderRadius: '8px',
+                  padding: '7px 16px', borderRadius: '8px',
                   border: `1px solid ${isCtrl ? '#D4AF37' : '#12C49A'}`,
-                  background: '#fff', cursor: guardando ? 'not-allowed' : 'pointer',
+                  background: isCtrl ? '#FEFCE8' : '#F0FDF4',
+                  cursor: guardando ? 'not-allowed' : 'pointer',
                   fontSize: '12px', fontWeight: 700,
                   color: isCtrl ? '#92400E' : '#0A3D2E',
                   opacity: guardando ? 0.7 : 1,
                 }}
               >
                 <Save size={13} />
-                {guardando ? 'Guardando...' : isCtrl ? 'Guardar Control Médico' : 'Guardar Registro'}
+                <Mail size={13} />
+                {guardando ? 'Guardando y enviando...' : isCtrl ? 'Guardar Control + Email' : 'Guardar + Email Paciente'}
               </button>
             </div>
           )}
