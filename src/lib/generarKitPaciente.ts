@@ -1,5 +1,6 @@
 import type { HistoriaClinicaForm } from '../types/historia-clinica';
 import { subirSoporteHTML } from './soportes';
+import { htmlToPdfBase64 } from './htmlToPdf';
 
 // ─── Colores ──────────────────────────────────────────────────────────────────
 const C = {
@@ -826,13 +827,14 @@ export async function generarKitPaciente(
     }
   }
 
-  // Enviar por email al paciente (form.email o leadEmail)
+  // Enviar por email al paciente como PDF adjunto
   const emailDestino = opts.leadEmail || form.email;
   if (emailDestino) {
     const { supabase } = await import('./supabase');
     if (supabase) {
+      const pdfBase64 = await htmlToPdfBase64(html);
       supabase.functions.invoke('notify-kit-paciente', {
-        body: { email: emailDestino, nombre, htmlContent: html },
+        body: { email: emailDestino, nombre, pdfBase64 },
       })
         .then(() => opts.onEmailSent?.())
         .catch((err: unknown) => console.warn('notify-kit-paciente:', err));
