@@ -789,10 +789,12 @@ export function buildKitPacienteHTML(form: HistoriaClinicaForm): string {
 
 // ─── FUNCIÓN PRINCIPAL EXPORT ─────────────────────────────────────────────────
 export interface GenKitOpts {
-  leadId?:   string;
-  hcId?:     string;
-  onSaved?:  (url: string) => void;
-  onError?:  () => void;
+  leadId?:      string;
+  hcId?:        string;
+  leadEmail?:   string;
+  onSaved?:     (url: string) => void;
+  onError?:     () => void;
+  onEmailSent?: () => void;
 }
 
 export async function generarKitPaciente(
@@ -810,9 +812,10 @@ export async function generarKitPaciente(
   win.document.close();
   win.onload = () => { win.focus(); win.print(); };
 
+  const nombre = `${form.nombres || 'Paciente'} ${form.apellidos || ''}`.trim();
+
   if (opts.leadId) {
-    const n = `${form.nombres || 'Paciente'} ${form.apellidos || ''}`.trim();
-    const nombreDoc = `Kit del Paciente — ${n}`;
+    const nombreDoc = `Kit del Paciente — ${nombre}`;
     const resultado = await subirSoporteHTML(
       opts.leadId, nombreDoc, 'kit_paciente', html, opts.hcId,
     );
@@ -820,6 +823,19 @@ export async function generarKitPaciente(
       opts.onSaved?.(resultado.url);
     } else {
       opts.onError?.();
+    }
+  }
+
+  // Enviar por email al paciente (form.email o leadEmail)
+  const emailDestino = opts.leadEmail || form.email;
+  if (emailDestino) {
+    const { supabase } = await import('./supabase');
+    if (supabase) {
+      supabase.functions.invoke('notify-kit-paciente', {
+        body: { email: emailDestino, nombre, htmlContent: html },
+      })
+        .then(() => opts.onEmailSent?.())
+        .catch((err: unknown) => console.warn('notify-kit-paciente:', err));
     }
   }
 }

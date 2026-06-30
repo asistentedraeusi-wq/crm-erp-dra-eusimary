@@ -67,7 +67,8 @@ interface Props {
 
 export default function HistoriaClinicaForm({ initialData, readOnly = false, leadId, hcId }: Props) {
   const navigate = useNavigate();
-  const { moveStage, updateLead } = useLeads();
+  const { moveStage, updateLead, leads } = useLeads();
+  const leadEmail = leadId ? leads.find(l => l.id === leadId)?.email : undefined;
   const [form, setForm] = useState<HCForm>({ ...EMPTY, ...initialData });
   const [guardando, setGuardando] = useState(false);
   const esActualizacion = Boolean(hcId);
@@ -353,9 +354,10 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
                   return;
                 }
                 await generarKitPaciente(form, {
-                  leadId, hcId,
-                  onSaved: () => toast.success('Kit del Paciente generado y guardado en Soportes.', { description: 'Disponible en la pestaña Soportes del paciente.' }),
+                  leadId, hcId, leadEmail,
+                  onSaved: () => toast.success('Kit generado y guardado en Soportes.', { description: leadEmail ? `Email enviado a ${leadEmail}` : 'Disponible en la pestaña Soportes del paciente.' }),
                   onError: () => toast.warning('Kit generado. No se pudo guardar en Soportes.'),
+                  onEmailSent: () => toast.success('Kit enviado al paciente por email.'),
                 });
               }}
               style={{
