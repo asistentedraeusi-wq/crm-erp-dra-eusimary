@@ -1179,9 +1179,12 @@ function TabSeguimientoPanel({ lead }: { lead: Lead }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, color: '#374151' }}>Fecha de Inicio del Programa</span>
             <span style={{ fontSize: '12px', fontWeight: 800, color: '#0A3D2E', background: '#E6FAF5', padding: '3px 10px', borderRadius: '6px' }}>
-              {lead.plan_inicio
-                ? new Date(lead.plan_inicio + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
-                : '—'}
+              {(() => {
+                const d = lead.plan_inicio ?? lead.pago2_fecha
+                return d
+                  ? new Date(d + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+                  : '—'
+              })()}
             </span>
           </div>
           {/* Fecha aplicación medicamento — manual */}
