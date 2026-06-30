@@ -46,7 +46,7 @@ const EMPTY: HCForm = {
   dx1: '', cie1: '', dx2: '', cie2: '', dx3: '', cie3: '', dx4: '', cie4: '', dx5: '', cie5: '', dx_obs: '',
   examenes: [], exam_otro: '', instr_lab: '',
   res_fecha: '', res_estado: '', res_obs: '', res_archivo_url: '', res_valores: {},
-  fecha_2cita: '', tipo_2cita: '',
+  fecha_2cita: '', tipo_2cita: '', programa_2cita: '', motivo_2cita: '',
   med_nombre: '', med_otro: '', dosis: '', frecuencia: '',
   plan_nf: '', nutricion: '', actividad: '', metas: '', proxima: '',
   pm_plan_base: '', pm_proteinas: [], pm_vegetales: [], pm_restricciones: [],

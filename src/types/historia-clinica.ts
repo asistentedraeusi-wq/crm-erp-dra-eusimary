@@ -127,6 +127,10 @@ export interface HistoriaClinicaForm {
   fecha_2cita:    string;
   tipo_2cita:     string;
 
+  // S02b — Datos de la 2ª Cita
+  programa_2cita: string;
+  motivo_2cita:   string;
+
   // S10 — Plan de Manejo (campos base HC)
   med_nombre:     string;
   med_otro:       string;
