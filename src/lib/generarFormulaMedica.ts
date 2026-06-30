@@ -1,5 +1,13 @@
 import type { HistoriaClinicaForm } from '../types/historia-clinica';
 
+export function getNextOrdenMedNum(): string {
+  const year = new Date().getFullYear();
+  const key  = `crm_om_seq_${year}`;
+  const seq  = (parseInt(localStorage.getItem(key) ?? '0') + 1);
+  localStorage.setItem(key, String(seq));
+  return `OM-${year}-${String(seq).padStart(4, '0')}`;
+}
+
 function fechaColombia(date: Date): string {
   const meses = [
     'enero','febrero','marzo','abril','mayo','junio',
@@ -18,9 +26,10 @@ function getProgramaCorto(val: string): string {
   return m[val] || val || '—';
 }
 
-export function buildFormulaMedicaHTML(form: HistoriaClinicaForm, logoUrl: string): string {
-  const fecha       = fechaColombia(new Date());
+export function buildFormulaMedicaHTML(form: HistoriaClinicaForm, logoUrl: string, ordenNum?: string): string {
+  const fecha         = fechaColombia(new Date());
   const programaCorto = getProgramaCorto(form.programa);
+  const numControl    = ordenNum ?? '';
 
   // Construir filas de medicamentos
   const medicamentos: { nombre: string; dosis: string; frecuencia: string }[] = [];
@@ -101,13 +110,19 @@ export function buildFormulaMedicaHTML(form: HistoriaClinicaForm, logoUrl: strin
   <div style="height:2px;background:#D4AF37;"></div>
 
   <!-- BANNER -->
-  <div style="background:#E6FAF5;border-bottom:2px solid rgba(18,196,154,0.3);padding:13px 36px;text-align:center;">
-    <div style="font-size:15px;font-weight:900;color:#0A3D2E;text-transform:uppercase;letter-spacing:1.5px;">
-      F&oacute;rmula M&eacute;dica &mdash; Prescripci&oacute;n de Medicamentos
+  <div style="background:#E6FAF5;border-bottom:2px solid rgba(18,196,154,0.3);padding:13px 36px;display:flex;align-items:center;justify-content:space-between;">
+    <div style="text-align:center;flex:1;">
+      <div style="font-size:15px;font-weight:900;color:#0A3D2E;text-transform:uppercase;letter-spacing:1.5px;">
+        F&oacute;rmula M&eacute;dica &mdash; Prescripci&oacute;n de Medicamentos
+      </div>
+      <div style="font-size:12px;font-weight:700;color:#0D7A5F;margin-top:3px;">
+        ${programaCorto}
+      </div>
     </div>
-    <div style="font-size:12px;font-weight:700;color:#0D7A5F;margin-top:3px;">
-      ${programaCorto}
-    </div>
+    ${numControl ? `<div style="background:#0A3D2E;border-radius:8px;padding:6px 14px;text-align:center;flex-shrink:0;">
+      <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.1em;">No. Control</div>
+      <div style="font-size:13px;font-weight:900;color:#D4AF37;letter-spacing:0.5px;">${numControl}</div>
+    </div>` : ''}
   </div>
 
   <!-- CUERPO -->
@@ -193,6 +208,7 @@ export function buildFormulaMedicaHTML(form: HistoriaClinicaForm, logoUrl: strin
       </div>
       <div style="font-size:8.5px;color:rgba(255,255,255,0.45);letter-spacing:0.06em;text-transform:uppercase;">
         V&aacute;lida 30 d&iacute;as &nbsp;&middot;&nbsp; Documento M&eacute;dico Confidencial &nbsp;&middot;&nbsp; Res. 1995/1999 MINSALUD
+        ${numControl ? `&nbsp;&middot;&nbsp; Ref: ${numControl}` : ''}
       </div>
     </div>
   </div>
@@ -202,10 +218,10 @@ export function buildFormulaMedicaHTML(form: HistoriaClinicaForm, logoUrl: strin
 </html>`;
 }
 
-export function generarFormulaMedica(form: HistoriaClinicaForm): void {
-  const logoUrl = `${window.location.origin}/logo-dra-eusimary.jpg`;
-  const html    = buildFormulaMedicaHTML(form, logoUrl);
-  const win     = window.open('', '_blank', 'width=880,height=960');
+export function generarFormulaMedica(form: HistoriaClinicaForm, logoUrl?: string, ordenNum?: string): void {
+  const logo = logoUrl ?? `${window.location.origin}/logo-dra-eusimary.jpg`;
+  const html  = buildFormulaMedicaHTML(form, logo, ordenNum);
+  const win   = window.open('', '_blank', 'width=880,height=960');
   if (win) {
     win.document.write(html);
     win.document.close();

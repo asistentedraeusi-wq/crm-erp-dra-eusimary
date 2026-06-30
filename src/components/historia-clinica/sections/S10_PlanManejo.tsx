@@ -2,8 +2,9 @@ import { toast } from 'sonner';
 import type { HistoriaClinicaForm } from '../../../types/historia-clinica';
 import { useLeads } from '../../../context/LeadsContext';
 import { supabase } from '../../../lib/supabase';
-import { generarFormulaMedica, buildFormulaMedicaHTML } from '../../../lib/generarFormulaMedica';
+import { generarFormulaMedica, buildFormulaMedicaHTML, getNextOrdenMedNum } from '../../../lib/generarFormulaMedica';
 import { subirSoporteHTML } from '../../../lib/soportes';
+import { htmlToPdfBase64 } from '../../../lib/htmlToPdf';
 import SectionHeader from '../ui/SectionHeader';
 import FormField from '../ui/FormField';
 
@@ -180,23 +181,43 @@ export default function S10_PlanManejo({ form, set, leadId }: Props) {
   const { leads } = useLeads();
 
   async function handleGenerarFormula() {
-    generarFormulaMedica(form);
+    // Número de control único para esta orden
+    const ordenNum  = getNextOrdenMedNum();
+    const logoUrl   = 'https://draeusimary.netlify.app/logo-dra-eusimary.jpg';
+    const htmlContent = buildFormulaMedicaHTML(form, logoUrl, ordenNum)
+      .replace('<script>window.onload = function(){ window.print(); }</script>', '');
+
+    // Abrir ventana de impresión con el consecutivo ya incluido
+    generarFormulaMedica(form, logoUrl, ordenNum);
 
     if (!leadId) return;
 
-    const lead      = leads.find(l => l.id === leadId);
-    const nombre    = [form.nombres, form.apellidos].filter(Boolean).join(' ') || lead?.name || '';
-    const logoUrl   = 'https://draeusimary.netlify.app/logo-dra-eusimary.jpg';
-    const htmlContent = buildFormulaMedicaHTML(form, logoUrl)
-      .replace('<script>window.onload = function(){ window.print(); }</script>', '');
+    const lead   = leads.find(l => l.id === leadId);
+    const nombre = [form.nombres, form.apellidos].filter(Boolean).join(' ') || lead?.name || '';
 
-    await subirSoporteHTML(leadId, `Fórmula Médica — ${nombre || 'Paciente'}`, 'formula_medica', htmlContent);
-    toast.success('Fórmula generada · Guardada en Soportes y enviada al paciente');
+    // Guardar en Soportes
+    await subirSoporteHTML(leadId, `Orden Médica ${ordenNum} — ${nombre || 'Paciente'}`, 'formula_medica', htmlContent);
+    toast.success(`Orden ${ordenNum} guardada en Soportes`);
 
-    if (supabase && lead?.email) {
-      supabase.functions.invoke('notify-formula-medica', {
-        body: { email: lead.email, nombre, htmlContent },
-      }).catch((err: unknown) => console.warn('notify-formula-medica:', err));
+    // Enviar por email como PDF adjunto
+    if (!supabase || !lead?.email || lead.email === 'nuevo@email.com') return;
+
+    toast.success('Generando PDF para enviar al paciente...');
+    const pdfBase64 = await htmlToPdfBase64(htmlContent);
+
+    try {
+      const { error } = await supabase.functions.invoke('notify-formula-medica', {
+        body: { email: lead.email, nombre, ordenNum, pdfBase64 },
+      });
+      if (error) {
+        toast.warning(`Email no enviado: ${error.message ?? 'error desconocido'}`);
+      } else {
+        toast.success(`✓ Orden ${ordenNum} enviada a ${lead.email} con PDF adjunto`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.warning(`Email no enviado: ${msg}`);
+      console.warn('notify-formula-medica:', err);
     }
   }
 
@@ -260,7 +281,7 @@ export default function S10_PlanManejo({ form, set, leadId }: Props) {
             }}
           >
             <span style={{ fontSize: '16px' }}>℞</span>
-            Generar Orden Médica
+            Generar Orden Médica de Medicamentos
           </button>
         </div>
       </div>

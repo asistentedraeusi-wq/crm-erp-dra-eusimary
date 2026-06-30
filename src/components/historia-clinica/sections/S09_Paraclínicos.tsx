@@ -1,47 +1,14 @@
 import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import type { HistoriaClinicaForm } from '../../../types/historia-clinica';
 import { EXAMENES_PARACLÍNICOS } from '../../../constants/historia-clinica';
 import { useLeads } from '../../../context/LeadsContext';
 import { supabase } from '../../../lib/supabase';
 import { generarOrdenMedica, buildOrdenMedicaHTML } from '../../../lib/generarOrdenMedica';
 import { subirSoporteHTML } from '../../../lib/soportes';
+import { htmlToPdfBase64 } from '../../../lib/htmlToPdf';
 import SectionHeader from '../ui/SectionHeader';
 import FormField from '../ui/FormField';
-
-// Convierte HTML a PDF y devuelve base64 para adjuntar en email
-async function htmlToPdfBase64(htmlContent: string): Promise<string | null> {
-  try {
-    const container = document.createElement('div');
-    container.innerHTML = htmlContent;
-    Object.assign(container.style, {
-      position: 'absolute', left: '-9999px', top: '0',
-      width: '794px', background: '#fff',
-    });
-    document.body.appendChild(container);
-
-    const canvas = await html2canvas(container, { scale: 2, useCORS: true, logging: false });
-    document.body.removeChild(container);
-
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const imgW = 210;
-    const imgH = (canvas.height * imgW) / canvas.width;
-    let y = 0;
-    const pageH = 297;
-    // Paginar si el contenido es más largo que una página
-    while (y < imgH) {
-      if (y > 0) pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, -y, imgW, imgH);
-      y += pageH;
-    }
-    return pdf.output('datauristring').split(',')[1];
-  } catch (err) {
-    console.warn('htmlToPdfBase64:', err);
-    return null;
-  }
-}
 
 const TEXTAREA: React.CSSProperties = {
   borderRadius: '8px', border: '1px solid #E5E7EB', padding: '10px 12px',
@@ -201,7 +168,7 @@ export default function S09_Paraclínicos({ form, set, leadId }: Props) {
       }}>
         <div>
           <p style={{ fontSize: '13px', fontWeight: '700', color: tieneExamenes ? '#0A3D2E' : '#9CA3AF', margin: 0 }}>
-            Generar Orden Médica
+            Generar Orden de Laboratorios / Paraclínicos
           </p>
           <p style={{ fontSize: '11px', color: tieneExamenes ? '#374151' : '#D1D5DB', margin: '2px 0 0' }}>
             {tieneExamenes
@@ -232,7 +199,7 @@ export default function S09_Paraclínicos({ form, set, leadId }: Props) {
           }}
         >
           <FileText size={15} />
-          Generar Orden Médica
+          Generar Orden Lab.
         </button>
       </div>
     </div>
