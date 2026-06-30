@@ -31,7 +31,7 @@ const EMPTY: HCForm = {
   nombres: '', apellidos: '', cc: '', tipo_doc: '', fecha_nac: '', edad: '',
   sexo: '', estado_civil: '', escolaridad: '', ocupacion: '', ciudad: '',
   direccion: '', telefono: '', email: '', eps: '', regimen: '',
-  fecha_consulta: new Date().toISOString().split('T')[0],
+  fecha_consulta: new Date().toLocaleDateString('sv'),
   tipo_consulta: '', programa: '', num_hc: '', motivo: '',
   ant_pers: [], ant_pers_obs: '', ant_fam: [], ant_fam_obs: '',
   meds: [], meds_obs: '', alergias: '',

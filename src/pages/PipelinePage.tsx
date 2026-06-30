@@ -907,7 +907,7 @@ function TabHistoriaClinica({ lead }: { lead: Lead }) {
     edad: String(lead.age), ciudad: lead.city,
     meta: lead.meta ?? '', objetivo: lead.objetivo ?? '',
     condicion: lead.condicion ?? '',
-    fecha_consulta: new Date().toISOString().split('T')[0],
+    fecha_consulta: new Date().toLocaleDateString('sv'),
   }
 
   // ── Cargando ──
@@ -1470,7 +1470,7 @@ function TabPagos({ lead }: { lead: Lead }) {
   }
 
   function handleConfirmarPlan() {
-    const hoy = new Date().toISOString().split('T')[0]
+    const hoy = new Date().toLocaleDateString('sv')
     updateLead(lead.id, { pago_confirmado: true, plan_inicio: hoy })
     moveStage(lead.id, 'activo')
     setConfirmingPlan(false)
@@ -1480,7 +1480,7 @@ function TabPagos({ lead }: { lead: Lead }) {
   function handleRegistrarPago2() {
     const valor  = parseInt(valorInput.replace(/\D/g, ''))  || 0
     const pagado = tipoPago2 === 'total' ? valor : (parseInt(pagadoInput.replace(/\D/g, '')) || 0)
-    const hoy    = new Date().toISOString().split('T')[0]
+    const hoy    = new Date().toLocaleDateString('sv')
 
     // Mapear programa → código de plan para KPIs
     const PROG_PLAN: Record<string, 'S1' | 'S2'> = {
