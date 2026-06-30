@@ -7,7 +7,7 @@ import {
   Clock, Activity, CreditCard, Stethoscope,
   MoreHorizontal, Calendar, MapPin, Edit2, ArrowRight,
   Download, Database, CheckCircle2, AlertCircle, Loader2, Copy,
-  ExternalLink, Trash2, FileCode, Upload,
+  ExternalLink, Trash2, FileCode, Upload, Lock, DollarSign,
 } from 'lucide-react'
 import { useLeads, type Lead, type StageId } from '../context/LeadsContext'
 import { listarSoportes, eliminarSoporte, subirSoporteArchivo, TIPO_LABELS, TIPO_COLORS, type Soporte } from '../lib/soportes'
@@ -1252,6 +1252,10 @@ function TabPagos({ lead }: { lead: Lead }) {
   const { moveStage, updateLead } = useLeads()
   const [confirmingFiltro, setConfirmingFiltro] = useState(false)
   const [confirmingPlan,   setConfirmingPlan]   = useState(false)
+  const [editandoPago2,    setEditandoPago2]    = useState(false)
+  const [tipoPago2, setTipoPago2] = useState<'total' | 'parcial'>(lead.pago2_tipo ?? 'total')
+  const [valorInput, setValorInput]   = useState((lead.pago2_valor_asignado ?? 0).toString())
+  const [pagadoInput, setPagadoInput] = useState((lead.pago2_pagado ?? 0).toString())
 
   const plans = {
     S1: { name: 'Plan S1 — Control Metabólico', price: 500_000, period: 'Trimestral' },
@@ -1262,6 +1266,21 @@ function TabPagos({ lead }: { lead: Lead }) {
   const filtroPagado   = lead.filtro_pagado ?? false
   const pagoConfirmado = lead.pago_confirmado || lead.stage === 'activo' ||
                          lead.stage === 'renovacion' || lead.stage === 'no_renueva'
+
+  // 2ª cita
+  const prog2 = lead.segunda_cita_programa
+  const PROG_LABELS: Record<string, string> = {
+    control_metabolico:     'Control Metabólico Premium',
+    bienestar_integral:     'Bienestar Integral',
+    consulta_filtro:        'Consulta Filtro',
+    consulta_medica_general:'Consulta Médica General',
+    pendiente:              'Pendiente de definición',
+  }
+  const prog2Label     = prog2 ? (PROG_LABELS[prog2] ?? prog2) : null
+  const pago2Registrado = Boolean(lead.pago2_tipo)
+  const valAsignado    = lead.pago2_valor_asignado ?? 0
+  const valPagado      = lead.pago2_pagado ?? 0
+  const saldoPendiente = Math.max(0, valAsignado - valPagado)
 
   function handleConfirmarFiltro() {
     updateLead(lead.id, { filtro_pagado: true })
@@ -1284,6 +1303,24 @@ function TabPagos({ lead }: { lead: Lead }) {
     toast.success('✓ Pago confirmado — Paciente Activo')
   }
 
+  function handleRegistrarPago2() {
+    const valor  = parseInt(valorInput.replace(/\D/g, ''))  || 0
+    const pagado = tipoPago2 === 'total' ? valor : (parseInt(pagadoInput.replace(/\D/g, '')) || 0)
+    updateLead(lead.id, {
+      pago2_valor_asignado: valor,
+      pago2_pagado:         pagado,
+      pago2_tipo:           tipoPago2,
+      pago2_fecha:          new Date().toISOString().split('T')[0],
+    })
+    setEditandoPago2(false)
+    const saldo = Math.max(0, valor - pagado)
+    if (tipoPago2 === 'total') {
+      toast.success('✓ Pago total registrado — saldo $0')
+    } else {
+      toast.success(`✓ Pago parcial registrado — saldo $${saldo.toLocaleString('es-CO')} COP`)
+    }
+  }
+
   const Badge = ({ ok, label }: { ok: boolean; label: string }) => (
     <span style={{
       fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px',
@@ -1291,6 +1328,12 @@ function TabPagos({ lead }: { lead: Lead }) {
       color: ok ? '#065F46' : '#92400E',
     }}>{label}</span>
   )
+
+  const INPUT_STYLE: React.CSSProperties = {
+    width: '100%', padding: '7px 10px', borderRadius: '7px',
+    border: '1px solid #E5E7EB', fontSize: '13px', color: '#111827',
+    background: '#fff', boxSizing: 'border-box', outline: 'none',
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -1368,6 +1411,154 @@ function TabPagos({ lead }: { lead: Lead }) {
           </div>
         )}
       </div>
+
+      {/* ── 2ª Cita — Control de Pagos ── */}
+      {!prog2 ? (
+        <div style={{ border: '1.5px dashed #E5E7EB', borderRadius: '12px', padding: '22px 16px', textAlign: 'center', background: '#FAFAFA' }}>
+          <Lock size={20} color="#D1D5DB" style={{ margin: '0 auto 10px', display: 'block' }} />
+          <p style={{ fontSize: '12px', fontWeight: 700, color: '#9CA3AF', margin: '0 0 4px' }}>2ª Cita — Módulo bloqueado</p>
+          <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0, lineHeight: 1.6 }}>
+            Guarda el <strong style={{ color: '#6B7280' }}>Punto 11 — Datos de la 2ª Cita</strong> en la Historia Clínica con el programa clínico seleccionado para habilitar este módulo.
+          </p>
+        </div>
+      ) : (
+        <div style={{ border: '1px solid #D1FAE5', borderRadius: '12px', overflow: 'hidden' }}>
+
+          {/* Header */}
+          <div style={{ background: '#F0FDF4', padding: '10px 14px', borderBottom: '1px solid #D1FAE5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <DollarSign size={14} color="#16A34A" />
+              <div>
+                <p style={{ fontSize: '11px', fontWeight: 800, color: '#065F46', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>2ª Cita — Control de Pagos</p>
+                <p style={{ fontSize: '12px', fontWeight: 700, color: '#0D2244', margin: '1px 0 0' }}>{prog2Label}</p>
+              </div>
+            </div>
+            <Badge
+              ok={pago2Registrado && saldoPendiente === 0}
+              label={!pago2Registrado ? 'Pendiente' : saldoPendiente === 0 ? 'Al día' : 'Parcial'}
+            />
+          </div>
+
+          {/* Resumen cuando ya hay pago registrado y no se está editando */}
+          {pago2Registrado && !editandoPago2 && (
+            <div style={{ padding: '12px 14px', background: '#fff', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                <span style={{ color: '#6B7280', fontWeight: 600 }}>Valor asignado</span>
+                <span style={{ color: '#111827', fontWeight: 700 }}>${valAsignado.toLocaleString('es-CO')} COP</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                <span style={{ color: '#6B7280', fontWeight: 600 }}>Tipo de pago</span>
+                <span style={{ color: '#111827', fontWeight: 700 }}>{lead.pago2_tipo === 'total' ? 'Pago total' : 'Pago parcial'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                <span style={{ color: '#6B7280', fontWeight: 600 }}>Monto pagado</span>
+                <span style={{ color: '#16A34A', fontWeight: 700 }}>${valPagado.toLocaleString('es-CO')} COP</span>
+              </div>
+              {saldoPendiente > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '8px 10px', background: '#FEF3C7', borderRadius: '8px', marginTop: '2px' }}>
+                  <span style={{ color: '#92400E', fontWeight: 700 }}>Saldo pendiente</span>
+                  <span style={{ color: '#92400E', fontWeight: 800 }}>${saldoPendiente.toLocaleString('es-CO')} COP</span>
+                </div>
+              )}
+              {saldoPendiente === 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 10px', background: '#F0FDF4', borderRadius: '8px', marginTop: '2px' }}>
+                  <CheckCircle2 size={13} color="#16A34A" />
+                  <span style={{ fontSize: '12px', color: '#15803D', fontWeight: 700 }}>Sin saldo pendiente</span>
+                </div>
+              )}
+              {lead.pago2_fecha && (
+                <p style={{ fontSize: '10px', color: '#9CA3AF', margin: '2px 0 0', textAlign: 'right' }}>
+                  Registrado: {new Date(lead.pago2_fecha + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+              )}
+              <button onClick={() => {
+                setTipoPago2(lead.pago2_tipo ?? 'total')
+                setValorInput((lead.pago2_valor_asignado ?? 0).toString())
+                setPagadoInput((lead.pago2_pagado ?? 0).toString())
+                setEditandoPago2(true)
+              }} style={{ marginTop: '4px', width: '100%', padding: '7px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#F9FAFB', fontSize: '11px', fontWeight: 600, color: '#6B7280', cursor: 'pointer' }}>
+                Editar pago
+              </button>
+            </div>
+          )}
+
+          {/* Formulario de registro de pago */}
+          {(!pago2Registrado || editandoPago2) && (
+            <div style={{ padding: '12px 14px', background: '#fff', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+              {/* Valor asignado */}
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: '#374151', display: 'block', marginBottom: '4px' }}>
+                  Valor asignado a pagar (COP)
+                </label>
+                <input
+                  type="number"
+                  value={valorInput}
+                  onChange={e => setValorInput(e.target.value)}
+                  placeholder="Ej: 500000"
+                  style={INPUT_STYLE}
+                />
+              </div>
+
+              {/* Tipo de pago */}
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: '#374151', display: 'block', marginBottom: '6px' }}>Tipo de pago</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {(['total', 'parcial'] as const).map(tipo => (
+                    <button
+                      key={tipo}
+                      onClick={() => setTipoPago2(tipo)}
+                      style={{
+                        flex: 1, padding: '8px', borderRadius: '8px', cursor: 'pointer',
+                        fontSize: '12px', fontWeight: 700,
+                        border: tipoPago2 === tipo ? '2px solid #0A3D2E' : '1px solid #E5E7EB',
+                        background: tipoPago2 === tipo ? '#E6FAF5' : '#F9FAFB',
+                        color: tipoPago2 === tipo ? '#0A3D2E' : '#6B7280',
+                      }}
+                    >
+                      {tipo === 'total' ? '✓ Pago Total' : '◑ Pago Parcial'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Monto pagado — solo si parcial */}
+              {tipoPago2 === 'parcial' && (
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#374151', display: 'block', marginBottom: '4px' }}>
+                    Monto pagado (COP)
+                  </label>
+                  <input
+                    type="number"
+                    value={pagadoInput}
+                    onChange={e => setPagadoInput(e.target.value)}
+                    placeholder="Ej: 250000"
+                    style={INPUT_STYLE}
+                  />
+                  {parseInt(valorInput) > 0 && parseInt(pagadoInput) >= 0 && (
+                    <p style={{ fontSize: '11px', color: '#D97706', fontWeight: 700, margin: '4px 0 0' }}>
+                      Saldo pendiente: ${Math.max(0, parseInt(valorInput) - parseInt(pagadoInput)).toLocaleString('es-CO')} COP
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Botones */}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
+                {editandoPago2 && (
+                  <button onClick={() => setEditandoPago2(false)} style={{ flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#fff', fontSize: '12px', fontWeight: 600, color: '#6B7280', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                )}
+                <button onClick={handleRegistrarPago2} style={{ flex: 2, padding: '8px', borderRadius: '8px', background: '#0A3D2E', border: 'none', fontSize: '12px', fontWeight: 700, color: '#fff', cursor: 'pointer' }}>
+                  <CheckCircle2 size={13} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
+                  {editandoPago2 ? 'Guardar cambios' : 'Registrar Pago'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   )
@@ -1480,26 +1671,30 @@ function LeadPanel({
             style={{ overflowX: 'auto', scrollbarWidth: 'none' }}
           >
             <div className="flex items-stretch" style={{ minWidth: '100%' }}>
-              {TABS.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center justify-center whitespace-nowrap border-b-2 font-semibold transition-all duration-150 flex-1 ${
-                    activeTab === tab.id
-                      ? 'border-[#12C49A] text-[#12C49A]'
-                      : 'border-transparent text-gray-400 hover:text-gray-600'
-                  }`}
-                  style={{
-                    fontSize: '11px',
-                    paddingTop: '11px',
-                    paddingBottom: '11px',
-                    gap: '4px',
-                  }}
-                >
-                  <span className={activeTab === tab.id ? 'text-[#12C49A]' : 'text-gray-400'}>{tab.icon}</span>
-                  {tab.label}
-                </button>
-              ))}
+              {TABS.map(tab => {
+                const isPagosLocked = tab.id === 'pagos' && !lead.segunda_cita_programa
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center justify-center whitespace-nowrap border-b-2 font-semibold transition-all duration-150 flex-1 ${
+                      activeTab === tab.id
+                        ? 'border-[#12C49A] text-[#12C49A]'
+                        : 'border-transparent text-gray-400 hover:text-gray-600'
+                    }`}
+                    style={{
+                      fontSize: '11px',
+                      paddingTop: '11px',
+                      paddingBottom: '11px',
+                      gap: '4px',
+                    }}
+                  >
+                    <span className={activeTab === tab.id ? 'text-[#12C49A]' : 'text-gray-400'}>{tab.icon}</span>
+                    {tab.label}
+                    {isPagosLocked && <Lock size={9} style={{ marginLeft: '2px', opacity: 0.5 }} />}
+                  </button>
+                )
+              })}
             </div>
           </div>
 

@@ -51,6 +51,12 @@ export interface Lead {
   plan_inicio?:     string
   hc_id?:           string
   seguimiento?:     SeguimientoSemanal[]
+  // Pago 2ª cita — se activa cuando HC Point 11 se guarda con programa_2cita
+  segunda_cita_programa?: string
+  pago2_valor_asignado?:  number
+  pago2_pagado?:          number
+  pago2_tipo?:            'total' | 'parcial'
+  pago2_fecha?:           string
 }
 
 // ─── Storage keys ─────────────────────────────────────────────────────────────
@@ -115,6 +121,11 @@ function rowToLead(row: DbRow): Lead {
     plan_inicio:     (row.plan_inicio as string) ?? undefined,
     hc_id:           (row.hc_id as string) ?? undefined,
     seguimiento:     (row.seguimiento as SeguimientoSemanal[]) ?? undefined,
+    segunda_cita_programa: (row.segunda_cita_programa as string) ?? undefined,
+    pago2_valor_asignado:  (row.pago2_valor_asignado as number) ?? undefined,
+    pago2_pagado:          (row.pago2_pagado as number) ?? undefined,
+    pago2_tipo:            (row.pago2_tipo as Lead['pago2_tipo']) ?? undefined,
+    pago2_fecha:           (row.pago2_fecha as string) ?? undefined,
   }
 }
 
@@ -136,12 +147,17 @@ function leadToRow(lead: Lead) {
     objetivo:        lead.objetivo ?? null,
     condicion:       lead.condicion ?? null,
     fuente:          lead.fuente ?? null,
-    filtro_pagado:   lead.filtro_pagado ?? null,
-    pago_confirmado: lead.pago_confirmado ?? null,
-    plan_inicio:     lead.plan_inicio ?? null,
-    hc_id:           lead.hc_id ?? null,
-    seguimiento:     lead.seguimiento ?? null,
-    updated_at:      new Date().toISOString(),
+    filtro_pagado:          lead.filtro_pagado ?? null,
+    pago_confirmado:        lead.pago_confirmado ?? null,
+    plan_inicio:            lead.plan_inicio ?? null,
+    hc_id:                  lead.hc_id ?? null,
+    seguimiento:            lead.seguimiento ?? null,
+    segunda_cita_programa:  lead.segunda_cita_programa ?? null,
+    pago2_valor_asignado:   lead.pago2_valor_asignado ?? null,
+    pago2_pagado:           lead.pago2_pagado ?? null,
+    pago2_tipo:             lead.pago2_tipo ?? null,
+    pago2_fecha:            lead.pago2_fecha ?? null,
+    updated_at:             new Date().toISOString(),
   }
 }
 

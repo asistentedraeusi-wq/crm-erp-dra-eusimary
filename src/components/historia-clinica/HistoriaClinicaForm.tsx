@@ -150,6 +150,18 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
       toast.success('Historia clínica guardada con los datos de la 2ª cita.');
       if (leadId) {
         moveStage(leadId, 'pendiente_inicio');
+        if (form.programa_2cita) {
+          const PRECIOS: Record<string, number> = {
+            control_metabolico: 500_000,
+            bienestar_integral: 250_000,
+            consulta_filtro: 70_000,
+            consulta_medica_general: 100_000,
+          };
+          updateLead(leadId, {
+            segunda_cita_programa: form.programa_2cita,
+            pago2_valor_asignado: PRECIOS[form.programa_2cita] ?? undefined,
+          });
+        }
         // Actualizar copia en Soportes con datos completos de 1ª + 2ª cita
         generarHistoriaClinicaPDF(form, {
           leadId,
@@ -177,6 +189,18 @@ export default function HistoriaClinicaForm({ initialData, readOnly = false, lea
       toast.success('Historia clínica guardada con datos de 1ª y 2ª cita.');
       if (leadId) {
         moveStage(leadId, 'pendiente_inicio');
+        if (form.programa_2cita) {
+          const PRECIOS: Record<string, number> = {
+            control_metabolico: 500_000,
+            bienestar_integral: 250_000,
+            consulta_filtro: 70_000,
+            consulta_medica_general: 100_000,
+          };
+          updateLead(leadId, {
+            segunda_cita_programa: form.programa_2cita,
+            pago2_valor_asignado: PRECIOS[form.programa_2cita] ?? undefined,
+          });
+        }
         generarHistoriaClinicaPDF(form, {
           leadId,
           hcId: data.id,
