@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Activity, ChevronRight, User, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLeads, type Lead, type SeguimientoSemanal } from '../context/LeadsContext'
 import { guardarControlSeguimiento } from '../lib/generarSeguimientoPDF'
+import { obtenerHistoria } from '../lib/historia-clinica'
+import type { HistoriaClinicaForm as HCForm } from '../types/historia-clinica'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -80,6 +82,40 @@ function PatientCard({
   )
 }
 
+// ─── Celda de dato baseline ───────────────────────────────────────────────────
+
+function BaseCell({ label, value, unit = '' }: { label: string; value?: string; unit?: string }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '8px 4px', background: '#fff', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+      <div style={{ fontSize: '8.5px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '3px' }}>{label}</div>
+      <div style={{ fontSize: '14px', fontWeight: 800, color: value ? '#0A3D2E' : '#D1D5DB' }}>
+        {value || '—'}
+        {value && unit && <span style={{ fontSize: '10px', fontWeight: 600, color: '#6B7280' }}> {unit}</span>}
+      </div>
+    </div>
+  )
+}
+
+// ─── Delta badge ──────────────────────────────────────────────────────────────
+
+function DeltaBadge({ current, base, unit = 'kg', lowerBetter = true }: {
+  current?: string; base?: string; unit?: string; lowerBetter?: boolean
+}) {
+  if (!current || !base) return null
+  const diff = parseFloat(current) - parseFloat(base)
+  if (isNaN(diff) || Math.abs(diff) < 0.01) return null
+  const improved = lowerBetter ? diff < 0 : diff > 0
+  return (
+    <span style={{
+      fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '5px',
+      background: improved ? '#D1FAE5' : '#FEE2E2',
+      color: improved ? '#065F46' : '#DC2626',
+    }}>
+      {diff < 0 ? '↓' : '↑'}{Math.abs(diff).toFixed(1)}{unit}
+    </span>
+  )
+}
+
 // ─── Tarjeta de semana ────────────────────────────────────────────────────────
 
 function SemanaCard({
@@ -87,11 +123,13 @@ function SemanaCard({
   lead,
   semActual,
   updateSemana,
+  hcForm,
 }: {
   semana: number
   lead: Lead
   semActual: number
   updateSemana: (n: number, patch: Partial<SeguimientoSemanal>) => void
+  hcForm: HCForm | null
 }) {
   const [open, setOpen] = useState(false)
   const [guardando, setGuardando] = useState(false)
@@ -101,6 +139,7 @@ function SemanaCard({
   const done     = !!(sem.peso || sem.fecha)
   const isFutura = semana > semActual
   const isS1     = lead.plan === 'S1'
+  const isTele   = hcForm?.modalidad === 'telemedicina'
 
   const borderColor = isCtrl ? '#D4AF37' : done ? '#16A34A' : isActual ? '#12C49A' : '#E5E7EB'
   const headerBg    = isCtrl ? '#FEFCE8' : done ? '#F0FDF4'  : isActual ? '#F0FBF7' : '#F9FAFB'
@@ -108,6 +147,8 @@ function SemanaCard({
 
   const status = done ? '✓' : isActual ? '◉ Actual' : isFutura ? 'Pendiente' : '—'
   const statusColor = done ? '#16A34A' : isActual ? '#12C49A' : '#9CA3AF'
+
+  const basePeso = hcForm ? (isTele ? hcForm.tp : hcForm.peso) : undefined
 
   function field(label: string, key: keyof SeguimientoSemanal, ph = '', type = 'text') {
     return (
@@ -141,8 +182,9 @@ function SemanaCard({
           )}
           {sem.fecha && <span style={{ fontSize: '10px', color: '#6B7280' }}>· {sem.fecha}</span>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           {sem.peso && <span style={{ fontSize: '11px', fontWeight: 700, color: '#374151' }}>{sem.peso} kg</span>}
+          {sem.peso && basePeso && <DeltaBadge current={sem.peso} base={basePeso} unit="kg" />}
           <span style={{ fontSize: '10px', fontWeight: 700, color: statusColor }}>{status}</span>
           {!isFutura && <span style={{ fontSize: '10px', color: '#9CA3AF' }}>{open ? '▲' : '▼'}</span>}
         </div>
@@ -150,6 +192,8 @@ function SemanaCard({
 
       {open && !isFutura && (
         <div style={{ padding: '14px', background: '#fff', borderTop: '1px solid #F3F4F6', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+          {/* ── Campos comunes (existentes) ── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
             {field('Fecha', 'fecha', '', 'date')}
             {field('Peso (kg)', 'peso', '___')}
@@ -161,7 +205,40 @@ function SemanaCard({
             {field('Vasos agua', 'vasos_agua', '0–15')}
           </div>
 
-          {/* Síntomas */}
+          {/* ── Campos Telemedicina ── */}
+          {isTele && (
+            <div>
+              <p style={{ fontSize: '10px', fontWeight: 800, color: '#0891B2', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>📡 Medidas Corporales — Telemedicina</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                {field('Cadera (cm)', 'cadera', '—')}
+                {field('Cuello (cm)', 'cuello', '—')}
+                {field('Pantorrilla (cm)', 'pantorrilla', '—')}
+                {field('FC (lpm)', 'fc', '72')}
+              </div>
+            </div>
+          )}
+
+          {/* ── Campos Presencial ── */}
+          {!isTele && hcForm && (
+            <div>
+              <p style={{ fontSize: '10px', fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>🏥 Composición Corporal — Presencial</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                {field('IMC (kg/m²)', 'imc', '—')}
+                {field('Grasa Corp. (%)', 'grasa_pct', '—')}
+                {field('Masa Grasa (kg)', 'masa_grasa_kg', '—')}
+                {field('Masa Magra (%)', 'masa_magra_pct', '—')}
+                {field('Agua (L)', 'agua_pct', '—')}
+                {field('Peri. Abdominal (cm)', 'peri_abd', '—')}
+                {field('Rango Grasa Óptima', 'fat_range', '18-25%')}
+                {field('FC (lpm)', 'fc', '72')}
+                {field('Temp. (°C)', 'temp', '36.5')}
+                {field('SatO₂ (%)', 'sato2', '98')}
+                {field('FR (rpm)', 'fr', '16')}
+              </div>
+            </div>
+          )}
+
+          {/* ── Síntomas (existente) ── */}
           <div>
             <p style={{ fontSize: '10px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>Síntomas</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
@@ -179,7 +256,7 @@ function SemanaCard({
             </div>
           </div>
 
-          {/* Adherencia */}
+          {/* ── Adherencia (existente) ── */}
           <div>
             <p style={{ fontSize: '10px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>Adherencia nutricional</p>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -191,7 +268,7 @@ function SemanaCard({
             </div>
           </div>
 
-          {/* Notas */}
+          {/* ── Notas (existente) ── */}
           <div>
             <p style={{ fontSize: '10px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Notas</p>
             <textarea
@@ -203,7 +280,7 @@ function SemanaCard({
             />
           </div>
 
-          {/* Botón guardar registro en Soportes */}
+          {/* ── Botón guardar en Soportes (existente) ── */}
           {done && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '4px' }}>
               <button
@@ -232,7 +309,7 @@ function SemanaCard({
             </div>
           )}
 
-          {/* Control médico */}
+          {/* ── Control médico (existente, semanas 4/8/12) ── */}
           {isCtrl && (
             <div style={{ background: '#FEFCE8', border: '1px solid #D4AF3766', borderRadius: '8px', padding: '12px' }}>
               <p style={{ fontSize: '11px', fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 10px' }}>⭐ Control Médico — Semana {semana}</p>
@@ -280,6 +357,18 @@ function PacienteDetail({ lead }: { lead: Lead }) {
   const planLabel   = lead.plan === 'S1' ? 'Control Metabólico' : lead.plan === 'S2' ? 'Bienestar Integral' : '—'
   const planColor   = lead.plan === 'S1' ? '#7C3AED' : '#0891B2'
 
+  // Cargar HC para baseline examen físico
+  const [hcForm, setHcForm] = useState<HCForm | null>(null)
+  useEffect(() => {
+    if (lead.hc_id) {
+      obtenerHistoria(lead.hc_id).then(({ data }) => {
+        if (data?.datos) setHcForm(data.datos as HCForm)
+      })
+    }
+  }, [lead.hc_id])
+
+  const isTele = hcForm?.modalidad === 'telemedicina'
+
   function updateSemana(n: number, patch: Partial<SeguimientoSemanal>) {
     const prev = (lead.seguimiento ?? []).filter(s => s.semana !== n)
     const curr = (lead.seguimiento ?? []).find(s => s.semana === n) ?? { semana: n }
@@ -288,7 +377,8 @@ function PacienteDetail({ lead }: { lead: Lead }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* Header paciente */}
+
+      {/* ── Header paciente (existente) ── */}
       <div style={{ background: 'linear-gradient(135deg, #0B1B3D, #162847)', borderRadius: '14px', padding: '20px 24px', color: '#fff' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
           <div>
@@ -325,12 +415,94 @@ function PacienteDetail({ lead }: { lead: Lead }) {
         </div>
       </div>
 
-      {/* 12 semanas */}
+      {/* ── Fechas del Programa ── */}
+      <div style={{ border: '1px solid #D1FAE5', borderRadius: '12px', overflow: 'hidden' }}>
+        <div style={{ background: '#F0FDF4', padding: '10px 18px', borderBottom: '1px solid #D1FAE5' }}>
+          <p style={{ fontSize: '10px', fontWeight: 800, color: '#065F46', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>Fechas del Programa</p>
+        </div>
+        <div style={{ padding: '12px 18px', background: '#fff', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {/* Inicio — automático */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#374151' }}>Fecha de Inicio del Programa</span>
+            <span style={{ fontSize: '13px', fontWeight: 800, color: '#0A3D2E', background: '#E6FAF5', padding: '4px 14px', borderRadius: '8px' }}>
+              {lead.plan_inicio
+                ? new Date(lead.plan_inicio + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+                : '—'}
+            </span>
+          </div>
+          {/* Aplicación medicamento — editable */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#374151', flexShrink: 0 }}>Fecha de Aplicación del Medicamento</span>
+            <input
+              type="date"
+              value={lead.fecha_aplicacion_med ?? ''}
+              onChange={e => updateLead(lead.id, { fecha_aplicacion_med: e.target.value })}
+              style={{ height: '32px', borderRadius: '8px', border: '1px solid #E5E7EB', padding: '0 10px', fontSize: '12px', color: '#111827', outline: 'none', background: '#fff', minWidth: '150px' }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Evaluación Inicial — Examen Físico Baseline ── */}
+      {hcForm && (
+        <div style={{ border: '1px solid #E5E7EB', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ background: '#0A3D2E', padding: '10px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ fontSize: '11px', fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
+              Evaluación Inicial — Examen Físico
+            </p>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.12)', padding: '2px 10px', borderRadius: '4px' }}>
+              {isTele ? 'Telemedicina' : 'Presencial'} · Semana 0
+            </span>
+          </div>
+          <div style={{ padding: '14px 18px', background: '#F9FAFB' }}>
+            {isTele ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                <BaseCell label="Peso" value={hcForm.tp} unit="kg" />
+                <BaseCell label="Cintura" value={hcForm.tw} unit="cm" />
+                <BaseCell label="Cadera" value={hcForm.thip} unit="cm" />
+                <BaseCell label="Cuello" value={hcForm.tn} unit="cm" />
+                <BaseCell label="Pantorrilla" value={hcForm.tc} unit="cm" />
+                <BaseCell label="TA" value={hcForm.pa} unit="mmHg" />
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '10px' }}>
+                  <BaseCell label="Peso" value={hcForm.peso} unit="kg" />
+                  <BaseCell label="IMC" value={hcForm.imc} unit="kg/m²" />
+                  <BaseCell label="Grasa Corp." value={hcForm.grasa} unit="%" />
+                  <BaseCell label="Masa Grasa" value={hcForm.grasa_kg} unit="kg" />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '10px' }}>
+                  <BaseCell label="Masa Magra %" value={hcForm.muscular} unit="%" />
+                  <BaseCell label="Masa Magra Kg" value={hcForm.magra_kg} unit="kg" />
+                  <BaseCell label="Agua" value={hcForm.agua_total} unit="L" />
+                  <BaseCell label="Peri. Abd." value={hcForm.peri_abd} unit="cm" />
+                </div>
+                <div style={{ height: '1px', background: '#E5E7EB', margin: '4px 0 10px' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
+                  <BaseCell label="TA" value={hcForm.pa} unit="mmHg" />
+                  <BaseCell label="FC" value={hcForm.fc} unit="lpm" />
+                  <BaseCell label="Temp." value={hcForm.temp} unit="°C" />
+                  <BaseCell label="SatO₂" value={hcForm.sato2} unit="%" />
+                  <BaseCell label="FR" value={hcForm.fr} unit="rpm" />
+                </div>
+                {hcForm.fat_range && (
+                  <div style={{ marginTop: '10px', padding: '6px 12px', background: '#E6FAF5', borderRadius: '8px', fontSize: '12px', color: '#0A3D2E', fontWeight: 600 }}>
+                    Rango grasa óptima inicial: <strong>{hcForm.fat_range}</strong>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── 12 semanas ── */}
       <div>
         <p style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 10px' }}>12 Semanas de Seguimiento</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
-            <SemanaCard key={n} semana={n} lead={lead} semActual={semActual} updateSemana={updateSemana} />
+            <SemanaCard key={n} semana={n} lead={lead} semActual={semActual} updateSemana={updateSemana} hcForm={hcForm} />
           ))}
         </div>
       </div>
